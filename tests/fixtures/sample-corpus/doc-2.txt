@@ -1,0 +1,13 @@
+Three Principles of Good Software Design
+
+1. Simplicity: The best code is code that doesn't exist. Every line of code
+is a liability. Keep systems as simple as possible.
+
+2. Modularity: Build small, focused components with clear interfaces. Each
+module should do one thing well and be independently testable.
+
+3. Adaptability: Requirements change. Design for change by minimizing
+coupling and maximizing cohesion. Prefer composition over inheritance.
+
+Good design is not about following rules blindly, but about making tradeoffs
+that serve the specific needs of your project and team.
