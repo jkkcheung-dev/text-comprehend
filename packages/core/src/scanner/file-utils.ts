@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { extname } from "node:path";
 
-const SUPPORTED_EXTENSIONS = new Set([".md", ".txt", ".rst", ".html"]);
+const SUPPORTED_EXTENSIONS = new Set([".md", ".txt", ".pdf", ".rst", ".html", ".docx"]);
 
 export function isSupportedFileType(filePath: string): boolean {
   const ext = extname(filePath).toLowerCase();

@@ -1,1 +1,1 @@
-export { ManifestManager } from "./manifest-manager.js";
+export { ManifestManager, type LoadResult } from "./manifest-manager.js";

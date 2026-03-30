@@ -5,8 +5,10 @@ describe("isSupportedFileType", () => {
   it("accepts supported extensions", () => {
     expect(isSupportedFileType("doc.md")).toBe(true);
     expect(isSupportedFileType("doc.txt")).toBe(true);
+    expect(isSupportedFileType("doc.pdf")).toBe(true);
     expect(isSupportedFileType("doc.rst")).toBe(true);
     expect(isSupportedFileType("doc.html")).toBe(true);
+    expect(isSupportedFileType("doc.docx")).toBe(true);
   });
 
   it("rejects unsupported extensions", () => {

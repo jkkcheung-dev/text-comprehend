@@ -6,6 +6,11 @@ import type { ScannedFile } from "../scanner/index.js";
 const OUTPUT_DIR = ".text-comprehend";
 const MANIFEST_FILE = "manifest.json";
 
+export interface LoadResult {
+  manifest: Manifest;
+  wasCorrupt: boolean;
+}
+
 export class ManifestManager {
   private readonly outputDir: string;
   private readonly manifestPath: string;
@@ -15,15 +20,21 @@ export class ManifestManager {
     this.manifestPath = join(this.outputDir, MANIFEST_FILE);
   }
 
-  async load(): Promise<Manifest> {
+  async load(): Promise<LoadResult> {
     try {
       const raw = await readFile(this.manifestPath, "utf-8");
-      return ManifestSchema.parse(JSON.parse(raw));
-    } catch {
+      return { manifest: ManifestSchema.parse(JSON.parse(raw)), wasCorrupt: false };
+    } catch (error) {
+      // Distinguish between "file doesn't exist" and "file is corrupt"
+      const isFileNotFound =
+        error instanceof Error && "code" in error && (error as NodeJS.ErrnoException).code === "ENOENT";
       return {
-        version: "1.0.0",
-        lastRun: new Date().toISOString(),
-        files: {},
+        manifest: {
+          version: "1.0.0",
+          lastRun: new Date().toISOString(),
+          files: {},
+        },
+        wasCorrupt: !isFileNotFound,
       };
     }
   }
@@ -43,6 +54,14 @@ export class ManifestManager {
       if (!existing) return true;
       return existing.fileHash !== file.fileHash;
     });
+  }
+
+  getRemovedFiles(
+    manifest: Manifest,
+    scannedFiles: ScannedFile[]
+  ): string[] {
+    const currentPaths = new Set(scannedFiles.map((f) => f.relativePath));
+    return Object.keys(manifest.files).filter((path) => !currentPaths.has(path));
   }
 
   getFailedFacets(

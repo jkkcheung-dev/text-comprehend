@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdtemp, rm, readFile } from "node:fs/promises";
+import { mkdtemp, rm, readFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { ManifestManager } from "../manifest-manager.js";
@@ -19,9 +19,10 @@ describe("ManifestManager", () => {
   });
 
   it("returns empty manifest when no manifest file exists", async () => {
-    const manifest = await manager.load();
+    const { manifest, wasCorrupt } = await manager.load();
     expect(manifest.version).toBe("1.0.0");
     expect(manifest.files).toEqual({});
+    expect(wasCorrupt).toBe(false);
   });
 
   it("saves and loads a manifest", async () => {
@@ -44,8 +45,9 @@ describe("ManifestManager", () => {
     };
 
     await manager.save(manifest);
-    const loaded = await manager.load();
+    const { manifest: loaded, wasCorrupt } = await manager.load();
     expect(loaded).toEqual(manifest);
+    expect(wasCorrupt).toBe(false);
   });
 
   it("saves manifest as valid JSON in .text-comprehend/manifest.json", async () => {
@@ -113,5 +115,69 @@ describe("ManifestManager", () => {
     expect(retryFiles).toEqual([
       { filePath: "doc.md", facets: ["concepts"] },
     ]);
+  });
+
+  it("detects removed files not present in current scan", () => {
+    const manifest: Manifest = {
+      version: "1.0.0",
+      lastRun: "2026-03-31T00:00:00.000Z",
+      files: {
+        "doc.md": {
+          documentId: "abc123def456",
+          fileHash: "hash1",
+          lastAnalyzed: "2026-03-31T00:00:00.000Z",
+          facets: {
+            summary: { status: "success" },
+            concepts: { status: "success" },
+            arguments: { status: "success" },
+            qa: { status: "success" },
+          },
+        },
+        "deleted.md": {
+          documentId: "def456abc789",
+          fileHash: "hash2",
+          lastAnalyzed: "2026-03-31T00:00:00.000Z",
+          facets: {
+            summary: { status: "success" },
+            concepts: { status: "success" },
+            arguments: { status: "success" },
+            qa: { status: "success" },
+          },
+        },
+      },
+    };
+
+    const removed = manager.getRemovedFiles(manifest, [
+      { relativePath: "doc.md", documentId: "abc123def456", fileHash: "hash1", absolutePath: "/x/doc.md", fileType: "md", sizeBytes: 100 },
+    ]);
+
+    expect(removed).toEqual(["deleted.md"]);
+  });
+
+  it("reports wasCorrupt when manifest file contains invalid JSON", async () => {
+    await mkdir(join(tempDir, ".text-comprehend"), { recursive: true });
+    await writeFile(
+      join(tempDir, ".text-comprehend", "manifest.json"),
+      "not valid json {{{",
+      "utf-8"
+    );
+
+    const { manifest, wasCorrupt } = await manager.load();
+    expect(wasCorrupt).toBe(true);
+    expect(manifest.version).toBe("1.0.0");
+    expect(manifest.files).toEqual({});
+  });
+
+  it("reports wasCorrupt when manifest fails schema validation", async () => {
+    await mkdir(join(tempDir, ".text-comprehend"), { recursive: true });
+    await writeFile(
+      join(tempDir, ".text-comprehend", "manifest.json"),
+      JSON.stringify({ version: 123, bad: "data" }),
+      "utf-8"
+    );
+
+    const { manifest, wasCorrupt } = await manager.load();
+    expect(wasCorrupt).toBe(true);
+    expect(manifest.files).toEqual({});
   });
 });
