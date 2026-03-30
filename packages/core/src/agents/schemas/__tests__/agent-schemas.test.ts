@@ -52,7 +52,38 @@ describe("ConceptExtractorOutputSchema", () => {
             },
           ],
         },
+        {
+          id: "concept-2",
+          name: "Artificial Intelligence",
+          definition: "The broader field encompassing ML",
+          importance: "core" as const,
+          sourceRefs: [
+            {
+              documentId: "abc123def456",
+              startLine: 1,
+              endLine: 2,
+              excerpt: "Artificial intelligence...",
+            },
+          ],
+        },
       ],
+      relationships: [
+        {
+          source: "concept-1",
+          target: "concept-2",
+          type: "depends_on" as const,
+          label: "ML is a subset of AI",
+        },
+      ],
+    };
+    expect(ConceptExtractorOutputSchema.parse(valid)).toEqual(valid);
+  });
+
+  it("validates output with empty relationships", () => {
+    const valid = {
+      documentId: "abc123def456",
+      concepts: [],
+      relationships: [],
     };
     expect(ConceptExtractorOutputSchema.parse(valid)).toEqual(valid);
   });

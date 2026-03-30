@@ -1,7 +1,7 @@
 import type { AgentInput } from "./types.js";
 
 export function buildConceptExtractorPrompt(input: AgentInput): string {
-  return `You are a concept extraction specialist. Analyze the following document and extract key concepts, definitions, and relationships.
+  return `You are a concept extraction specialist. Analyze the following document and extract key concepts, definitions, and relationships between concepts.
 
 ## Document Information
 - Document ID: ${input.documentId}
@@ -33,6 +33,14 @@ Produce a JSON object with the following structure:
         }
       ]
     }
+  ],
+  "relationships": [
+    {
+      "source": "<concept id of the source concept>",
+      "target": "<concept id of the target concept>",
+      "type": "<defines | depends_on | supports | contradicts | exemplifies>",
+      "label": "<brief description of the relationship>"
+    }
   ]
 }
 
@@ -45,5 +53,12 @@ Produce a JSON object with the following structure:
    - "peripheral": Mentioned but not deeply explored (0-5 per document)
 3. Definitions should explain the concept as used in THIS document, not generic definitions.
 4. Each concept must have at least one source reference with accurate line numbers.
-5. Return ONLY valid JSON. No markdown fences, no explanation text.`;
+5. Identify relationships between concepts:
+   - "defines": One concept defines or explains another
+   - "depends_on": One concept requires understanding of another
+   - "supports": One concept provides evidence or backing for another
+   - "contradicts": Two concepts are in tension or opposition
+   - "exemplifies": One concept is an example or instance of another
+6. Only include relationships that are clearly supported by the document text.
+7. Return ONLY valid JSON. No markdown fences, no explanation text.`;
 }
