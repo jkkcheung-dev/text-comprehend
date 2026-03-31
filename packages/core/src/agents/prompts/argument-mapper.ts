@@ -60,5 +60,5 @@ Produce a JSON object with the following structure:
 6. Identify logical gaps -- places where the argument is weak, evidence is missing, or reasoning has flaws.
 7. If the document is purely informational with no arguments, return an empty arguments array.
 8. Source references must use accurate line numbers.
-9. Return ONLY valid JSON. No markdown fences, no explanation text.`;
+9. Return ONLY valid JSON, optionally wrapped in a \`\`\`json code fence. No explanation text outside the JSON.`;
 }

@@ -3,6 +3,7 @@ export {
   type SummarizerOutput,
 } from "./summarizer-output.js";
 export {
+  ConceptRelationshipSchema,
   ConceptExtractorOutputSchema,
   type ConceptExtractorOutput,
 } from "./concept-extractor-output.js";

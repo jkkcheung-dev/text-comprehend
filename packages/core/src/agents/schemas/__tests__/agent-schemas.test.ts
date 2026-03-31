@@ -87,6 +87,34 @@ describe("ConceptExtractorOutputSchema", () => {
     };
     expect(ConceptExtractorOutputSchema.parse(valid)).toEqual(valid);
   });
+
+  it("rejects graph-level edge types (contains, questions) in concept relationships", () => {
+    const withContains = {
+      documentId: "abc123def456",
+      concepts: [],
+      relationships: [
+        {
+          source: "concept-1",
+          target: "concept-2",
+          type: "contains",
+        },
+      ],
+    };
+    expect(() => ConceptExtractorOutputSchema.parse(withContains)).toThrow();
+
+    const withQuestions = {
+      documentId: "abc123def456",
+      concepts: [],
+      relationships: [
+        {
+          source: "concept-1",
+          target: "concept-2",
+          type: "questions",
+        },
+      ],
+    };
+    expect(() => ConceptExtractorOutputSchema.parse(withQuestions)).toThrow();
+  });
 });
 
 describe("ArgumentMapperOutputSchema", () => {

@@ -50,5 +50,5 @@ Produce a JSON object with the following structure:
    - "evaluative": Tests critical assessment of arguments, evidence, or claims
 4. Answers should be thorough but concise (1-3 sentences).
 5. Each question must reference specific parts of the source document.
-6. Return ONLY valid JSON. No markdown fences, no explanation text.`;
+6. Return ONLY valid JSON, optionally wrapped in a \`\`\`json code fence. No explanation text outside the JSON.`;
 }

@@ -60,5 +60,5 @@ Produce a JSON object with the following structure:
    - "contradicts": Two concepts are in tension or opposition
    - "exemplifies": One concept is an example or instance of another
 6. Only include relationships that are clearly supported by the document text.
-7. Return ONLY valid JSON. No markdown fences, no explanation text.`;
+7. Return ONLY valid JSON, optionally wrapped in a \`\`\`json code fence. No explanation text outside the JSON.`;
 }
