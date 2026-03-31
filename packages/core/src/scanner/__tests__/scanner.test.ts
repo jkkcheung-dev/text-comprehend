@@ -72,6 +72,17 @@ describe("scanDirectory", () => {
     }
   });
 
+  it("skips empty files with appropriate reason", async () => {
+    const result = await scanDirectory(FIXTURES_DIR);
+    const paths = result.files.map((f: any) => f.relativePath);
+
+    expect(paths).not.toContain("empty.md");
+
+    const emptySkip = result.skipped.find((s) => s.path === "empty.md");
+    expect(emptySkip).toBeDefined();
+    expect(emptySkip!.reason).toBe("empty file");
+  });
+
   it("returns scan metadata", async () => {
     const result = await scanDirectory(FIXTURES_DIR);
 
