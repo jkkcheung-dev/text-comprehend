@@ -19,7 +19,7 @@ export const EdgeSchema = z.object({
 
 export const KnowledgeGraphSchema = z.object({
   version: z.string(),
-  generatedAt: z.string(),
+  generatedAt: z.string().datetime(),
   documents: z.array(DocumentNodeSchema),
   edges: z.array(EdgeSchema),
 });

@@ -13,7 +13,7 @@ export {
   type ArgumentNode,
 } from "./argument.js";
 export { QuestionNodeSchema, type QuestionNode } from "./question.js";
-export { DocumentNodeSchema, type DocumentNode } from "./document-node.js";
+export { DocumentNodeSchema, SUPPORTED_FILE_TYPES, type DocumentNode } from "./document-node.js";
 export {
   EdgeSchema,
   KnowledgeGraphSchema,

@@ -9,7 +9,7 @@ export const FacetStatusSchema = z.discriminatedUnion("status", [
 export const ManifestFileEntrySchema = z.object({
   documentId: z.string(),
   fileHash: z.string(),
-  lastAnalyzed: z.string(),
+  lastAnalyzed: z.string().datetime(),
   facets: z.object({
     summary: FacetStatusSchema,
     concepts: FacetStatusSchema,
@@ -20,7 +20,7 @@ export const ManifestFileEntrySchema = z.object({
 
 export const ManifestSchema = z.object({
   version: z.string(),
-  lastRun: z.string(),
+  lastRun: z.string().datetime(),
   files: z.record(z.string(), ManifestFileEntrySchema),
 });
 
