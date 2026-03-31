@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { computeFileHash, generateDocumentId, isSupportedFileType } from "../file-utils.js";
+import { computeFileHash, generateDocumentId, isSupportedFileType, isBinaryDocumentType } from "../file-utils.js";
 
 describe("isSupportedFileType", () => {
   it("accepts supported extensions", () => {
@@ -16,6 +16,22 @@ describe("isSupportedFileType", () => {
     expect(isSupportedFileType("data.json")).toBe(false);
     expect(isSupportedFileType("script.js")).toBe(false);
     expect(isSupportedFileType("noext")).toBe(false);
+  });
+});
+
+describe("isBinaryDocumentType", () => {
+  it("identifies PDF and DOCX as binary document types", () => {
+    expect(isBinaryDocumentType("report.pdf")).toBe(true);
+    expect(isBinaryDocumentType("report.docx")).toBe(true);
+    expect(isBinaryDocumentType("REPORT.PDF")).toBe(true);
+    expect(isBinaryDocumentType("REPORT.DOCX")).toBe(true);
+  });
+
+  it("does not flag text-based formats as binary", () => {
+    expect(isBinaryDocumentType("doc.md")).toBe(false);
+    expect(isBinaryDocumentType("doc.txt")).toBe(false);
+    expect(isBinaryDocumentType("doc.rst")).toBe(false);
+    expect(isBinaryDocumentType("doc.html")).toBe(false);
   });
 });
 

@@ -1,7 +1,9 @@
 import { readdir, readFile, stat, access } from "node:fs/promises";
 import { join, relative, extname } from "node:path";
+import ignore, { type Ignore } from "ignore";
 import {
   isSupportedFileType,
+  isBinaryDocumentType,
   computeFileHash,
   generateDocumentId,
 } from "./file-utils.js";
@@ -23,9 +25,9 @@ export interface ScanResult {
   skipped: { path: string; reason: string }[];
 }
 
-async function loadGitignorePatterns(rootDir: string): Promise<string[]> {
+async function loadGitignoreFromDir(dir: string): Promise<string[]> {
   try {
-    const gitignorePath = join(rootDir, ".gitignore");
+    const gitignorePath = join(dir, ".gitignore");
     await access(gitignorePath);
     const content = await readFile(gitignorePath, "utf-8");
     return content
@@ -37,62 +39,65 @@ async function loadGitignorePatterns(rootDir: string): Promise<string[]> {
   }
 }
 
-function matchesGitignore(relativePath: string, patterns: string[]): boolean {
-  for (const pattern of patterns) {
-    if (pattern.startsWith("*.")) {
-      const ext = pattern.slice(1);
-      if (relativePath.endsWith(ext)) return true;
-    }
-    if (pattern.endsWith("/")) {
-      if (
-        relativePath.startsWith(pattern) ||
-        relativePath.includes("/" + pattern)
-      ) {
-        return true;
-      }
-    }
-    if (relativePath === pattern) return true;
-  }
-  return false;
-}
-
 async function walkDirectory(
   dir: string,
   rootDir: string,
-  ignorePatterns: string[],
+  ig: Ignore,
   files: ScannedFile[],
   skipped: { path: string; reason: string }[],
 ): Promise<void> {
+  // Load nested .gitignore if present and merge into a child ignore instance
+  const nestedPatterns = await loadGitignoreFromDir(dir);
+  if (nestedPatterns.length > 0) {
+    ig = ignore().add(ig).add(nestedPatterns);
+  }
+
   const entries = await readdir(dir, { withFileTypes: true });
 
   for (const entry of entries) {
     const fullPath = join(dir, entry.name);
     const relPath = relative(rootDir, fullPath).replace(/\\/g, "/");
 
+    // Skip hidden files/directories
     if (entry.name.startsWith(".")) {
       continue;
     }
 
+    // Check gitignore before descending into directories
+    if (ig.ignores(relPath)) {
+      skipped.push({ path: relPath, reason: "matched .gitignore pattern" });
+      continue;
+    }
+
     if (entry.isDirectory()) {
-      await walkDirectory(fullPath, rootDir, ignorePatterns, files, skipped);
+      await walkDirectory(fullPath, rootDir, ig, files, skipped);
       continue;
     }
 
     if (!entry.isFile()) continue;
-
-    if (matchesGitignore(relPath, ignorePatterns)) {
-      skipped.push({ path: relPath, reason: "matched .gitignore pattern" });
-      continue;
-    }
 
     if (!isSupportedFileType(entry.name)) {
       skipped.push({ path: relPath, reason: "unsupported file type" });
       continue;
     }
 
-    const content = await readFile(fullPath, "utf-8");
+    // Binary document types (pdf, docx) need specialized extractors not yet implemented
+    if (isBinaryDocumentType(entry.name)) {
+      skipped.push({ path: relPath, reason: "binary document extraction not yet supported" });
+      continue;
+    }
+
+    // Stat first to get size and skip empty files without reading content
     const fileStat = await stat(fullPath);
 
+    if (fileStat.size === 0) {
+      skipped.push({ path: relPath, reason: "empty file" });
+      continue;
+    }
+
+    const content = await readFile(fullPath, "utf-8");
+
+    // Also skip files that are whitespace-only
     if (content.trim().length === 0) {
       skipped.push({ path: relPath, reason: "empty file" });
       continue;
@@ -110,11 +115,13 @@ async function walkDirectory(
 }
 
 export async function scanDirectory(rootDir: string): Promise<ScanResult> {
-  const ignorePatterns = await loadGitignorePatterns(rootDir);
+  const rootPatterns = await loadGitignoreFromDir(rootDir);
+  const ig = ignore().add(rootPatterns);
+
   const files: ScannedFile[] = [];
   const skipped: { path: string; reason: string }[] = [];
 
-  await walkDirectory(rootDir, rootDir, ignorePatterns, files, skipped);
+  await walkDirectory(rootDir, rootDir, ig, files, skipped);
 
   return {
     rootDir,

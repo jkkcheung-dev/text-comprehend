@@ -3,9 +3,17 @@ import { extname } from "node:path";
 
 const SUPPORTED_EXTENSIONS = new Set([".md", ".txt", ".pdf", ".rst", ".html", ".docx"]);
 
+/** Extensions that require binary extraction (not yet implemented) */
+const BINARY_DOCUMENT_EXTENSIONS = new Set([".pdf", ".docx"]);
+
 export function isSupportedFileType(filePath: string): boolean {
   const ext = extname(filePath).toLowerCase();
   return SUPPORTED_EXTENSIONS.has(ext);
+}
+
+export function isBinaryDocumentType(filePath: string): boolean {
+  const ext = extname(filePath).toLowerCase();
+  return BINARY_DOCUMENT_EXTENSIONS.has(ext);
 }
 
 export function computeFileHash(content: string): string {

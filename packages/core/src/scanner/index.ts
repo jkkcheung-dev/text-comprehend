@@ -3,4 +3,5 @@ export {
   computeFileHash,
   generateDocumentId,
   isSupportedFileType,
+  isBinaryDocumentType,
 } from "./file-utils.js";

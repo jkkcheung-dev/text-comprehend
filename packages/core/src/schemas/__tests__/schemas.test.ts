@@ -22,8 +22,29 @@ describe("SourceRefSchema", () => {
     expect(SourceRefSchema.parse(valid)).toEqual(valid);
   });
 
+  it("accepts equal startLine and endLine", () => {
+    const valid = {
+      documentId: "abc123def456",
+      startLine: 5,
+      endLine: 5,
+      excerpt: "Single line",
+    };
+    expect(SourceRefSchema.parse(valid)).toEqual(valid);
+  });
+
   it("rejects missing fields", () => {
     expect(() => SourceRefSchema.parse({ documentId: "abc" })).toThrow();
+  });
+
+  it("rejects endLine less than startLine", () => {
+    expect(() =>
+      SourceRefSchema.parse({
+        documentId: "abc123def456",
+        startLine: 10,
+        endLine: 5,
+        excerpt: "Invalid range",
+      })
+    ).toThrow();
   });
 });
 
@@ -144,6 +165,40 @@ describe("DocumentNodeSchema", () => {
     };
     expect(DocumentNodeSchema.parse(valid)).toEqual(valid);
   });
+
+  it("rejects invalid fileType", () => {
+    expect(() =>
+      DocumentNodeSchema.parse({
+        id: "abc123def456",
+        filePath: "docs/example.xyz",
+        title: "Example",
+        fileType: "xyz",
+        lastAnalyzed: "2026-03-31T00:00:00.000Z",
+        fileHash: "sha256-abc123",
+        summary: { thesis: "X", overview: "Y", sections: [] },
+        concepts: [],
+        arguments: [],
+        questions: [],
+      })
+    ).toThrow();
+  });
+
+  it("rejects non-ISO-8601 lastAnalyzed", () => {
+    expect(() =>
+      DocumentNodeSchema.parse({
+        id: "abc123def456",
+        filePath: "docs/example.md",
+        title: "Example",
+        fileType: "md",
+        lastAnalyzed: "March 31, 2026",
+        fileHash: "sha256-abc123",
+        summary: { thesis: "X", overview: "Y", sections: [] },
+        concepts: [],
+        arguments: [],
+        questions: [],
+      })
+    ).toThrow();
+  });
 });
 
 describe("EdgeSchema", () => {
@@ -177,6 +232,17 @@ describe("KnowledgeGraphSchema", () => {
       edges: [],
     };
     expect(KnowledgeGraphSchema.parse(valid)).toEqual(valid);
+  });
+
+  it("rejects non-ISO-8601 generatedAt", () => {
+    expect(() =>
+      KnowledgeGraphSchema.parse({
+        version: "1.0.0",
+        generatedAt: "not-a-timestamp",
+        documents: [],
+        edges: [],
+      })
+    ).toThrow();
   });
 });
 
@@ -221,5 +287,15 @@ describe("ManifestSchema", () => {
       },
     };
     expect(ManifestSchema.parse(valid)).toEqual(valid);
+  });
+
+  it("rejects non-ISO-8601 lastRun", () => {
+    expect(() =>
+      ManifestSchema.parse({
+        version: "1.0.0",
+        lastRun: "yesterday",
+        files: {},
+      })
+    ).toThrow();
   });
 });

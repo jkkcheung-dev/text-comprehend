@@ -21,11 +21,19 @@ describe("scanDirectory", () => {
     expect(paths).toContain("subdir/doc-3.md");
   });
 
-  it("skips files matching .gitignore patterns", async () => {
+  it("skips files matching root .gitignore patterns", async () => {
     const result = await scanDirectory(FIXTURES_DIR);
     const paths = result.files.map((f: any) => f.relativePath);
 
     expect(paths).not.toContain("ignored-file.log");
+  });
+
+  it("skips files matching nested .gitignore patterns", async () => {
+    const result = await scanDirectory(FIXTURES_DIR);
+    const paths = result.files.map((f: any) => f.relativePath);
+
+    // subdir/.gitignore ignores *.tmp
+    expect(paths).not.toContain("subdir/ignored-notes.tmp");
   });
 
   it("skips unsupported file types", async () => {
@@ -33,6 +41,17 @@ describe("scanDirectory", () => {
     const paths = result.files.map((f: any) => f.relativePath);
 
     expect(paths).not.toContain(".gitignore");
+  });
+
+  it("skips binary document types (pdf, docx) with appropriate reason", async () => {
+    const result = await scanDirectory(FIXTURES_DIR);
+    const paths = result.files.map((f: any) => f.relativePath);
+
+    expect(paths).not.toContain("report.pdf");
+
+    const pdfSkip = result.skipped.find((s) => s.path === "report.pdf");
+    expect(pdfSkip).toBeDefined();
+    expect(pdfSkip!.reason).toContain("binary document extraction not yet supported");
   });
 
   it("includes file hash and document ID for each file", async () => {
