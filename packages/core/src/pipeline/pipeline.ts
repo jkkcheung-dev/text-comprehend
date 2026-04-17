@@ -1,4 +1,4 @@
-import { readFile, unlink } from "node:fs/promises";
+import { readFile, stat, unlink } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { scanDirectory, type ScannedFile } from "../scanner/index.js";
 import { ManifestManager } from "../manifest/index.js";
@@ -27,6 +27,8 @@ import type {
 
 const ALL_FACETS: FacetType[] = ["summary", "concepts", "arguments", "qa"];
 const DEFAULT_BATCH_SIZE = 5;
+const LARGE_FILE_THRESHOLD = 100 * 1024; // 100KB
+const CHUNK_TARGET_SIZE = 50 * 1024; // ~50KB per chunk
 
 function extractTitle(filePath: string): string {
   const name = basename(filePath, extname(filePath));
@@ -65,6 +67,93 @@ async function processOneFacet(
   }
 }
 
+function splitIntoChunks(content: string): string[] {
+  const lines = content.split("\n");
+  const chunks: string[] = [];
+  let currentChunk: string[] = [];
+  let currentSize = 0;
+
+  for (const line of lines) {
+    const lineSize = Buffer.byteLength(line, "utf-8") + 1; // +1 for newline
+    // Split at heading boundaries or when chunk exceeds target size
+    const isHeading = /^#{1,3}\s/.test(line);
+    if (isHeading && currentSize > CHUNK_TARGET_SIZE / 2 && currentChunk.length > 0) {
+      chunks.push(currentChunk.join("\n"));
+      currentChunk = [];
+      currentSize = 0;
+    } else if (currentSize + lineSize > CHUNK_TARGET_SIZE && currentChunk.length > 0) {
+      chunks.push(currentChunk.join("\n"));
+      currentChunk = [];
+      currentSize = 0;
+    }
+    currentChunk.push(line);
+    currentSize += lineSize;
+  }
+  if (currentChunk.length > 0) {
+    chunks.push(currentChunk.join("\n"));
+  }
+  return chunks;
+}
+
+function mergeChunkResults(chunkResults: FacetResult[][]): Record<FacetType, FacetResult> {
+  const merged: Record<FacetType, FacetResult> = {} as Record<FacetType, FacetResult>;
+
+  for (const ft of ALL_FACETS) {
+    const facetResults = chunkResults.map((cr) => cr.find((r) => r.facetType === ft)).filter(Boolean) as FacetResult[];
+    if (facetResults.length === 0) {
+      merged[ft] = { facetType: ft, documentId: "", success: true, data: undefined };
+      continue;
+    }
+
+    const anyFailed = facetResults.find((r) => !r.success);
+    if (anyFailed) {
+      merged[ft] = anyFailed;
+      continue;
+    }
+
+    // Merge successful results
+    const documentId = facetResults[0].documentId;
+    const allData = facetResults.map((r) => r.data).filter(Boolean) as any[];
+
+    if (allData.length === 0) {
+      merged[ft] = { facetType: ft, documentId, success: true, data: undefined };
+      continue;
+    }
+
+    let mergedData: any;
+    switch (ft) {
+      case "summary": {
+        // Take first chunk's thesis/overview, merge sections from all chunks
+        mergedData = { ...allData[0] };
+        if (allData.length > 1) {
+          const allSections = allData.flatMap((d: any) => d.summary?.sections ?? []);
+          mergedData.summary = { ...mergedData.summary, sections: allSections };
+        }
+        break;
+      }
+      case "concepts": {
+        const allConcepts = allData.flatMap((d: any) => d.concepts ?? []);
+        const allRelationships = allData.flatMap((d: any) => d.relationships ?? []);
+        mergedData = { documentId, concepts: allConcepts, relationships: allRelationships };
+        break;
+      }
+      case "arguments": {
+        const allArgs = allData.flatMap((d: any) => d.arguments ?? []);
+        mergedData = { documentId, arguments: allArgs };
+        break;
+      }
+      case "qa": {
+        const allQuestions = allData.flatMap((d: any) => d.questions ?? []);
+        mergedData = { documentId, questions: allQuestions };
+        break;
+      }
+    }
+    merged[ft] = { facetType: ft, documentId, success: true, data: mergedData };
+  }
+
+  return merged;
+}
+
 async function processDocument(
   file: ScannedFile,
   facetsToRun: FacetType[],
@@ -72,6 +161,55 @@ async function processDocument(
   rootDir: string,
 ): Promise<DocumentResult> {
   const content = await readFile(file.absolutePath, "utf-8");
+  const contentSize = Buffer.byteLength(content, "utf-8");
+
+  // Large file chunking: split files >100KB into chunks
+  if (contentSize > LARGE_FILE_THRESHOLD) {
+    const chunks = splitIntoChunks(content);
+    const chunkResults: FacetResult[][] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunkInput: AgentInput = {
+        documentId: file.documentId,
+        filePath: file.relativePath,
+        title: `${extractTitle(file.relativePath)} (chunk ${i + 1}/${chunks.length})`,
+        content: chunks[i],
+      };
+      const settled = await Promise.allSettled(
+        facetsToRun.map((ft) => processOneFacet(ft, chunkInput, agentExecutor, rootDir)),
+      );
+      const results: FacetResult[] = settled.map((r, idx) =>
+        r.status === "fulfilled"
+          ? r.value
+          : { facetType: facetsToRun[idx], documentId: file.documentId, success: false as const, error: r.reason instanceof Error ? r.reason.message : String(r.reason) },
+      );
+      chunkResults.push(results);
+    }
+
+    const mergedFacets = mergeChunkResults(chunkResults);
+    // Set documentId on all merged results
+    for (const ft of ALL_FACETS) {
+      mergedFacets[ft].documentId = file.documentId;
+    }
+
+    // Re-persist merged data
+    for (const ft of facetsToRun) {
+      const facet = mergedFacets[ft];
+      if (facet.success && facet.data) {
+        await saveFacetOutput(rootDir, ft, file.documentId, facet.data);
+      }
+    }
+
+    // Fill skipped facets
+    for (const ft of ALL_FACETS) {
+      if (!facetsToRun.includes(ft)) {
+        mergedFacets[ft] = { facetType: ft, documentId: file.documentId, success: true, data: undefined };
+      }
+    }
+
+    return { documentId: file.documentId, filePath: file.relativePath, facets: mergedFacets };
+  }
+
   const agentInput: AgentInput = {
     documentId: file.documentId,
     filePath: file.relativePath,
@@ -125,7 +263,15 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
 
   // 2. Load manifest
   const manifestManager = new ManifestManager(rootDir);
-  const { manifest } = await manifestManager.load();
+  const { manifest, wasCorrupt } = await manifestManager.load();
+
+  if (wasCorrupt) {
+    console.warn("[pipeline] Manifest was corrupt — triggering full re-analysis of all files.");
+    // Clear all file entries so every file appears new
+    for (const key of Object.keys(manifest.files)) {
+      delete manifest.files[key];
+    }
+  }
 
   // 3. Determine files to process
   const changedFiles = manifestManager.getChangedFiles(manifest, scanResult.files);

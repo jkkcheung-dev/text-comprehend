@@ -253,6 +253,31 @@ describe("pipeline", () => {
     expect((summaryData as any).documentId).toBeDefined();
   });
 
+  it("triggers full re-analysis when manifest is corrupt", async () => {
+    await createTestFile("test-doc.md", "# Test\n\nContent.");
+
+    // First run - creates valid manifest
+    await runPipeline({ rootDir, agentExecutor: createMockExecutor() });
+
+    // Corrupt the manifest
+    const manifestPath = join(rootDir, ".text-comprehend", "manifest.json");
+    await writeFile(manifestPath, "NOT VALID JSON {{{", "utf-8");
+
+    // Second run - should re-process all files despite them being "unchanged"
+    let callCount = 0;
+    const executor: AgentExecutor = async (prompt) => {
+      callCount++;
+      return createMockExecutor()(prompt);
+    };
+
+    const result = await runPipeline({ rootDir, agentExecutor: executor });
+
+    // All 4 facets should be re-processed
+    expect(callCount).toBe(4);
+    expect(result.documentsProcessed).toBe(1);
+    expect(result.facetsSucceeded).toBe(4);
+  });
+
   it("removes manifest entry and facet files when a file is deleted", async () => {
     await createTestFile("to-delete.md", "# Will be deleted\n\nContent.");
 

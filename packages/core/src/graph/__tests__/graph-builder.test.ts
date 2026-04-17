@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { buildKnowledgeGraph } from "../graph-builder.js";
 import { join } from "node:path";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 
@@ -127,5 +127,65 @@ describe("buildKnowledgeGraph", () => {
     expect(kg.documents[0].concepts).toEqual([]);
     expect(kg.documents[0].arguments).toEqual([]);
     expect(kg.documents[0].questions).toEqual([]);
+  });
+
+  it("builds a multi-document graph and writes knowledge-graph.json to disk", async () => {
+    const root = join(tmpdir(), `tc-test-${randomUUID()}`);
+    const tcDir = join(root, ".text-comprehend");
+    await mkdir(tcDir, { recursive: true });
+
+    const ref1 = { documentId: "doc-a", startLine: 0, endLine: 1, excerpt: "x" };
+    const ref2 = { documentId: "doc-b", startLine: 0, endLine: 1, excerpt: "y" };
+
+    const manifest = {
+      version: "1.0.0",
+      lastRun: "2025-01-01T00:00:00.000Z",
+      files: {
+        "a.md": {
+          documentId: "doc-a",
+          fileHash: "ha",
+          lastAnalyzed: "2025-01-01T00:00:00.000Z",
+          facets: { summary: { status: "success" }, concepts: { status: "success" }, arguments: { status: "success" }, qa: { status: "success" } },
+        },
+        "b.md": {
+          documentId: "doc-b",
+          fileHash: "hb",
+          lastAnalyzed: "2025-01-01T00:00:00.000Z",
+          facets: { summary: { status: "success" }, concepts: { status: "success" }, arguments: { status: "success" }, qa: { status: "success" } },
+        },
+      },
+    };
+    await writeFile(join(tcDir, "manifest.json"), JSON.stringify(manifest));
+
+    const facetsDir = join(tcDir, "facets");
+    for (const ft of ["summary", "concepts", "arguments", "qa"]) {
+      await mkdir(join(facetsDir, ft), { recursive: true });
+    }
+
+    for (const [docId, ref] of [["doc-a", ref1], ["doc-b", ref2]] as const) {
+      await writeFile(join(facetsDir, "summary", `${docId}.json`), JSON.stringify({
+        documentId: docId,
+        summary: { thesis: `Thesis ${docId}`, overview: "Overview", sections: [{ id: `sec-${docId}`, heading: "H", summary: "S", keyPoints: ["k"], sourceRange: ref }] },
+      }));
+      await writeFile(join(facetsDir, "concepts", `${docId}.json`), JSON.stringify({
+        documentId: docId,
+        concepts: [{ id: `c-${docId}`, name: "SharedConcept", definition: "def", importance: "core", sourceRefs: [ref] }],
+        relationships: [],
+      }));
+      await writeFile(join(facetsDir, "arguments", `${docId}.json`), JSON.stringify({ documentId: docId, arguments: [] }));
+      await writeFile(join(facetsDir, "qa", `${docId}.json`), JSON.stringify({ documentId: docId, questions: [] }));
+    }
+
+    const kg = await buildKnowledgeGraph(root);
+
+    expect(kg.documents).toHaveLength(2);
+    expect(kg.edges.length).toBeGreaterThan(0);
+
+    // Verify file was written to disk
+    const kgPath = join(root, ".text-comprehend", "knowledge-graph.json");
+    const raw = await readFile(kgPath, "utf-8");
+    const parsed = JSON.parse(raw);
+    expect(parsed.documents).toHaveLength(2);
+    expect(parsed.version).toBe("1.0.0");
   });
 });

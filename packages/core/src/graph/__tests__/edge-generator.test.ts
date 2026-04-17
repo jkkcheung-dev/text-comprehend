@@ -69,38 +69,114 @@ describe("generateEdges", () => {
     expect(generateEdges([], new Map())).toEqual([]);
   });
 
-  it("generates supports edges from supporting to main arguments", () => {
-    const doc = makeDoc({
-      arguments: [
-        { id: "a-main", claim: "main claim", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-        { id: "a-sup", claim: "supporting claim", type: "supporting", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-      ],
-    });
-    const edges = generateEdges([doc], new Map());
-    expect(edges).toContainEqual({ source: "a-sup", target: "a-main", type: "supports" });
-  });
-
-  it("generates contradicts edges from counter to main arguments", () => {
-    const doc = makeDoc({
-      arguments: [
-        { id: "a-main", claim: "main claim", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-        { id: "a-counter", claim: "counter claim", type: "counter", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-      ],
-    });
-    const edges = generateEdges([doc], new Map());
-    expect(edges).toContainEqual({ source: "a-counter", target: "a-main", type: "contradicts" });
-  });
-
-  it("generates supports and contradicts edges to all main arguments", () => {
+  it("generates supports edge using parentClaimId", () => {
     const doc = makeDoc({
       arguments: [
         { id: "a-m1", claim: "main 1", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
         { id: "a-m2", claim: "main 2", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-        { id: "a-sup", claim: "sup", type: "supporting", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
+        { id: "a-sup", claim: "sup", type: "supporting", parentClaimId: "a-m2", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
       ],
     });
     const edges = generateEdges([doc], new Map());
-    expect(edges).toContainEqual({ source: "a-sup", target: "a-m1", type: "supports" });
+    // Should only link to a-m2, not a-m1
     expect(edges).toContainEqual({ source: "a-sup", target: "a-m2", type: "supports" });
+    expect(edges).not.toContainEqual({ source: "a-sup", target: "a-m1", type: "supports" });
+  });
+
+  it("generates contradicts edge using parentClaimId", () => {
+    const doc = makeDoc({
+      arguments: [
+        { id: "a-m1", claim: "main 1", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
+        { id: "a-counter", claim: "counter", type: "counter", parentClaimId: "a-m1", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
+      ],
+    });
+    const edges = generateEdges([doc], new Map());
+    expect(edges).toContainEqual({ source: "a-counter", target: "a-m1", type: "contradicts" });
+  });
+
+  it("falls back to nearest main by source line when no parentClaimId", () => {
+    const doc = makeDoc({
+      arguments: [
+        { id: "a-m1", claim: "main 1", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 1 }] },
+        { id: "a-m2", claim: "main 2", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 50 }] },
+        { id: "a-sup", claim: "sup", type: "supporting", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 48 }] },
+      ],
+    });
+    const edges = generateEdges([doc], new Map());
+    // sup at line 48 is closer to m2 at line 50
+    expect(edges).toContainEqual({ source: "a-sup", target: "a-m2", type: "supports" });
+    expect(edges).not.toContainEqual({ source: "a-sup", target: "a-m1", type: "supports" });
+  });
+
+  it("generates evidence→argument supports edges", () => {
+    const doc = makeDoc({
+      arguments: [
+        {
+          id: "a-1", claim: "claim", type: "main",
+          evidence: [
+            { content: "data point", type: "data", strength: "strong", sourceRef: ref },
+            { content: "citation", type: "citation", strength: "moderate", sourceRef: ref },
+          ],
+          assumptions: [], gaps: [], sourceRefs: [ref],
+        },
+      ],
+    });
+    const edges = generateEdges([doc], new Map());
+    expect(edges).toContainEqual({ source: "a-1-ev-0", target: "a-1", type: "supports" });
+    expect(edges).toContainEqual({ source: "a-1-ev-1", target: "a-1", type: "supports" });
+  });
+
+  it("includes depends_on concept relationships", () => {
+    const doc = makeDoc({
+      concepts: [
+        { id: "c-1", name: "A", definition: "d", importance: "core", sourceRefs: [ref] },
+        { id: "c-2", name: "B", definition: "d", importance: "core", sourceRefs: [ref] },
+      ],
+    });
+    const rels = new Map([["doc-1", [{ source: "c-1", target: "c-2", type: "depends_on" as const }]]]);
+    const edges = generateEdges([doc], rels);
+    expect(edges).toContainEqual({ source: "c-1", target: "c-2", type: "depends_on" });
+  });
+
+  it("includes exemplifies concept relationships", () => {
+    const doc = makeDoc({
+      concepts: [
+        { id: "c-1", name: "A", definition: "d", importance: "core", sourceRefs: [ref] },
+        { id: "c-2", name: "B", definition: "d", importance: "core", sourceRefs: [ref] },
+      ],
+    });
+    const rels = new Map([["doc-1", [{ source: "c-1", target: "c-2", type: "exemplifies" as const, label: "example" }]]]);
+    const edges = generateEdges([doc], rels);
+    expect(edges).toContainEqual({ source: "c-1", target: "c-2", type: "exemplifies", label: "example" });
+  });
+
+  it("passes through weight on concept relationships", () => {
+    const doc = makeDoc({
+      concepts: [
+        { id: "c-1", name: "A", definition: "d", importance: "core", sourceRefs: [ref] },
+        { id: "c-2", name: "B", definition: "d", importance: "core", sourceRefs: [ref] },
+      ],
+    });
+    const rels = new Map([["doc-1", [{ source: "c-1", target: "c-2", type: "supports" as const, weight: 0.8 }]]]);
+    const edges = generateEdges([doc], rels);
+    expect(edges).toContainEqual({ source: "c-1", target: "c-2", type: "supports", weight: 0.8 });
+  });
+
+  it("deduplicates edges with same source, target, and type", () => {
+    const doc = makeDoc({
+      concepts: [
+        { id: "c-1", name: "A", definition: "d", importance: "core", sourceRefs: [ref] },
+        { id: "c-2", name: "B", definition: "d", importance: "core", sourceRefs: [ref] },
+      ],
+      arguments: [
+        { id: "a-1", claim: "claim", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
+        { id: "a-2", claim: "sup", type: "supporting", parentClaimId: "a-1", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
+      ],
+    });
+    // Concept relationship duplicates the structural supports edge
+    const rels = new Map([["doc-1", [{ source: "a-2", target: "a-1", type: "supports" as const }]]]);
+    const edges = generateEdges([doc], rels);
+    const supEdges = edges.filter((e) => e.source === "a-2" && e.target === "a-1" && e.type === "supports");
+    expect(supEdges).toHaveLength(1);
   });
 });

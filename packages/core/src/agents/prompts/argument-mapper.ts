@@ -23,6 +23,7 @@ Produce a JSON object with the following structure:
       "id": "<unique argument id, e.g. arg-1>",
       "claim": "<the claim being made>",
       "type": "<main | supporting | counter>",
+      "parentClaimId": "<id of the main argument this supports/counters, omit for main arguments>",
       "evidence": [
         {
           "content": "<what evidence is provided>",
@@ -55,10 +56,11 @@ Produce a JSON object with the following structure:
 1. Identify the main claim(s) of the document (type: "main").
 2. Identify supporting arguments that back the main claims (type: "supporting").
 3. Identify any counter-arguments or opposing views (type: "counter").
-4. For each argument, list ALL evidence provided. Classify evidence type and strength.
-5. Identify unstated assumptions -- things the author takes for granted.
-6. Identify logical gaps -- places where the argument is weak, evidence is missing, or reasoning has flaws.
-7. If the document is purely informational with no arguments, return an empty arguments array.
-8. Source references must use accurate line numbers.
-9. Return ONLY valid JSON, optionally wrapped in a \`\`\`json code fence. No explanation text outside the JSON.`;
+4. For supporting and counter arguments, set "parentClaimId" to the id of the main argument they relate to. If unclear, pick the most relevant main argument.
+5. For each argument, list ALL evidence provided. Classify evidence type and strength.
+6. Identify unstated assumptions -- things the author takes for granted.
+7. Identify logical gaps -- places where the argument is weak, evidence is missing, or reasoning has flaws.
+8. If the document is purely informational with no arguments, return an empty arguments array.
+9. Source references must use accurate line numbers.
+10. Return ONLY valid JSON, optionally wrapped in a \`\`\`json code fence. No explanation text outside the JSON.`;
 }

@@ -12,6 +12,7 @@ export const ArgumentNodeSchema = z.object({
   id: z.string(),
   claim: z.string(),
   type: z.enum(["main", "supporting", "counter"]),
+  parentClaimId: z.string().optional(),
   evidence: z.array(EvidenceSchema),
   assumptions: z.array(z.string()),
   gaps: z.array(z.string()),
