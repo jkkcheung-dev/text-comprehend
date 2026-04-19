@@ -8,6 +8,8 @@ import {
   generateDocumentId,
 } from "./file-utils.js";
 
+const INTERNAL_DIRECTORIES = new Set([".git", ".text-comprehend", "node_modules"]);
+
 export interface ScannedFile {
   relativePath: string;
   absolutePath: string;
@@ -58,8 +60,8 @@ async function walkDirectory(
     const fullPath = join(dir, entry.name);
     const relPath = relative(rootDir, fullPath).replace(/\\/g, "/");
 
-    // Skip hidden files/directories
-    if (entry.name.startsWith(".")) {
+    if (entry.isDirectory() && INTERNAL_DIRECTORIES.has(entry.name)) {
+      skipped.push({ path: relPath, reason: "internal directory" });
       continue;
     }
 

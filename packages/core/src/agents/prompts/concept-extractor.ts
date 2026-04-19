@@ -52,7 +52,7 @@ Produce a JSON object with the following structure:
    - "supporting": Important but not central (3-8 per document)
    - "peripheral": Mentioned but not deeply explored (0-5 per document)
 3. Definitions should explain the concept as used in THIS document, not generic definitions.
-4. Each concept must have at least one source reference with accurate line numbers.
+4. Each concept must have at least one source reference with accurate 1-based line numbers.
 5. Identify relationships between concepts:
    - "defines": One concept defines or explains another
    - "depends_on": One concept requires understanding of another

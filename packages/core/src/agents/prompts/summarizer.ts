@@ -44,6 +44,6 @@ Produce a JSON object with the following structure:
 2. The overview must be a single paragraph (3-5 sentences).
 3. Create one section entry per logical section in the document. If the document has headings, use them. If not, infer logical sections.
 4. Each section must have 2-5 key points.
-5. Source references must use accurate line numbers from the document content above.
+5. Source references must use accurate 1-based line numbers from the document content above.
 6. Return ONLY valid JSON, optionally wrapped in a \`\`\`json code fence. No explanation text outside the JSON.`;
 }

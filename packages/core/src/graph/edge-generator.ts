@@ -80,24 +80,10 @@ export function generateEdges(
       if (arg.type === "supporting" || arg.type === "counter") {
         const edgeType = arg.type === "supporting" ? "supports" : "contradicts";
 
-        // Use parentClaimId if available, otherwise find nearest main by source position
-        if (arg.parentClaimId) {
-          const parent = doc.arguments.find((a) => a.id === arg.parentClaimId);
-          if (parent) {
-            addEdge({ source: arg.id, target: parent.id, type: edgeType });
-          }
-        } else {
-          const nearest = findNearestMain(arg, mainArgs);
-          if (nearest) {
-            addEdge({ source: arg.id, target: nearest.id, type: edgeType });
-          }
+        const nearest = findNearestMain(arg, mainArgs);
+        if (nearest) {
+          addEdge({ source: arg.id, target: nearest.id, type: edgeType });
         }
-      }
-
-      // evidence → argument edges
-      for (let i = 0; i < arg.evidence.length; i++) {
-        const evidenceId = `${arg.id}-ev-${i}`;
-        addEdge({ source: evidenceId, target: arg.id, type: "supports" });
       }
     }
 

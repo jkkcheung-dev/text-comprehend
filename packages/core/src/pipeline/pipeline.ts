@@ -16,6 +16,8 @@ import {
   type AgentInput,
 } from "../agents/index.js";
 import { saveFacetOutput } from "./facet-persistence.js";
+import { getFacetOutputPath } from "./facet-persistence.js";
+import { buildKnowledgeGraph } from "../graph/index.js";
 import type {
   FacetType,
   AgentExecutor,
@@ -24,15 +26,64 @@ import type {
   DocumentResult,
   PipelineResult,
 } from "./types.js";
+import type { SourceRef } from "../schemas/index.js";
 
 const ALL_FACETS: FacetType[] = ["summary", "concepts", "arguments", "qa"];
 const DEFAULT_BATCH_SIZE = 5;
 const LARGE_FILE_THRESHOLD = 100 * 1024; // 100KB
 const CHUNK_TARGET_SIZE = 50 * 1024; // ~50KB per chunk
 
+function joinUniqueSentences(parts: string[]): string {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const part of parts) {
+    const normalized = part.trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    unique.push(normalized);
+  }
+  return unique.join(" ");
+}
+
+function joinUniqueParagraphs(parts: string[]): string {
+  const seen = new Set<string>();
+  const unique: string[] = [];
+  for (const part of parts) {
+    const normalized = part.trim();
+    if (!normalized || seen.has(normalized)) continue;
+    seen.add(normalized);
+    unique.push(normalized);
+  }
+  return unique.join("\n\n");
+}
+
+function dedupeById<T extends { id: string }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
+}
+
+function dedupeRelationships<T extends { source: string; target: string; type: string; label?: string; weight?: number }>(items: T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    const key = `${item.source}|${item.target}|${item.type}|${item.label ?? ""}|${item.weight ?? ""}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function extractTitle(filePath: string): string {
   const name = basename(filePath, extname(filePath));
   return name.replace(/[-_]/g, " ");
+}
+
+interface ContentChunk {
+  content: string;
+  startLine: number;
 }
 
 const FACET_CONFIG: Record<FacetType, {
@@ -45,11 +96,106 @@ const FACET_CONFIG: Record<FacetType, {
   qa: { buildPrompt: buildQAGeneratorPrompt, schema: QAGeneratorOutputSchema },
 };
 
+function offsetSourceRef(sourceRef: SourceRef, lineOffset: number): SourceRef {
+  return {
+    ...sourceRef,
+    startLine: sourceRef.startLine + lineOffset,
+    endLine: sourceRef.endLine + lineOffset,
+  };
+}
+
+function normalizeChunkScopedIds<T extends { id: string }>(items: T[], chunkIndex: number): T[] {
+  if (chunkIndex === 0) return items;
+  return items.map((item) => ({
+    ...item,
+    id: `${item.id}-chunk-${chunkIndex + 1}`,
+  }));
+}
+
+function applyChunkOffset(facetType: FacetType, data: any, chunkIndex: number, lineOffset: number): any {
+  if (lineOffset === 0) {
+    if (facetType === "summary") {
+      return {
+        ...data,
+        summary: {
+          ...data.summary,
+          sections: normalizeChunkScopedIds(data.summary?.sections ?? [], chunkIndex),
+        },
+      };
+    }
+    if (facetType === "concepts") {
+      return {
+        ...data,
+        concepts: normalizeChunkScopedIds(data.concepts ?? [], chunkIndex),
+      };
+    }
+    if (facetType === "arguments") {
+      return {
+        ...data,
+        arguments: normalizeChunkScopedIds(data.arguments ?? [], chunkIndex),
+      };
+    }
+    if (facetType === "qa") {
+      return {
+        ...data,
+        questions: normalizeChunkScopedIds(data.questions ?? [], chunkIndex),
+      };
+    }
+    return data;
+  }
+
+  switch (facetType) {
+    case "summary":
+      return {
+        ...data,
+        summary: {
+          ...data.summary,
+          sections: normalizeChunkScopedIds(data.summary?.sections ?? [], chunkIndex).map((section: any) => ({
+            ...section,
+            sourceRange: offsetSourceRef(section.sourceRange, lineOffset),
+          })),
+        },
+      };
+    case "concepts":
+      return {
+        ...data,
+        concepts: normalizeChunkScopedIds(data.concepts ?? [], chunkIndex).map((concept: any) => ({
+          ...concept,
+          sourceRefs: (concept.sourceRefs ?? []).map((sourceRef: SourceRef) => offsetSourceRef(sourceRef, lineOffset)),
+        })),
+        relationships: data.relationships ?? [],
+      };
+    case "arguments":
+      return {
+        ...data,
+        arguments: normalizeChunkScopedIds(data.arguments ?? [], chunkIndex).map((argument: any) => ({
+          ...argument,
+          evidence: (argument.evidence ?? []).map((evidence: any) => ({
+            ...evidence,
+            sourceRef: offsetSourceRef(evidence.sourceRef, lineOffset),
+          })),
+          sourceRefs: (argument.sourceRefs ?? []).map((sourceRef: SourceRef) => offsetSourceRef(sourceRef, lineOffset)),
+        })),
+      };
+    case "qa":
+      return {
+        ...data,
+        questions: normalizeChunkScopedIds(data.questions ?? [], chunkIndex).map((question: any) => ({
+          ...question,
+          sourceRefs: (question.sourceRefs ?? []).map((sourceRef: SourceRef) => offsetSourceRef(sourceRef, lineOffset)),
+        })),
+      };
+    default:
+      return data;
+  }
+}
+
 async function processOneFacet(
   facetType: FacetType,
   agentInput: AgentInput,
   agentExecutor: AgentExecutor,
   rootDir: string,
+  chunkIndex = 0,
 ): Promise<FacetResult> {
   const config = FACET_CONFIG[facetType];
   try {
@@ -59,39 +205,46 @@ async function processOneFacet(
     if (!parsed.success) {
       return { facetType, documentId: agentInput.documentId, success: false, error: parsed.error };
     }
-    await saveFacetOutput(rootDir, facetType, agentInput.documentId, parsed.data);
-    return { facetType, documentId: agentInput.documentId, success: true, data: parsed.data };
+    const normalizedData = applyChunkOffset(facetType, parsed.data, chunkIndex, agentInput.lineOffset ?? 0);
+    await saveFacetOutput(rootDir, facetType, agentInput.documentId, normalizedData);
+    return { facetType, documentId: agentInput.documentId, success: true, data: normalizedData };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     return { facetType, documentId: agentInput.documentId, success: false, error: message };
   }
 }
 
-function splitIntoChunks(content: string): string[] {
+function splitIntoChunks(content: string): ContentChunk[] {
   const lines = content.split("\n");
-  const chunks: string[] = [];
+  const chunks: ContentChunk[] = [];
   let currentChunk: string[] = [];
   let currentSize = 0;
+  let chunkStartLine = 1;
+
+  function pushCurrentChunk(): void {
+    if (currentChunk.length === 0) return;
+    chunks.push({
+      content: currentChunk.join("\n"),
+      startLine: chunkStartLine,
+    });
+    chunkStartLine += currentChunk.length;
+    currentChunk = [];
+    currentSize = 0;
+  }
 
   for (const line of lines) {
     const lineSize = Buffer.byteLength(line, "utf-8") + 1; // +1 for newline
     // Split at heading boundaries or when chunk exceeds target size
     const isHeading = /^#{1,3}\s/.test(line);
     if (isHeading && currentSize > CHUNK_TARGET_SIZE / 2 && currentChunk.length > 0) {
-      chunks.push(currentChunk.join("\n"));
-      currentChunk = [];
-      currentSize = 0;
+      pushCurrentChunk();
     } else if (currentSize + lineSize > CHUNK_TARGET_SIZE && currentChunk.length > 0) {
-      chunks.push(currentChunk.join("\n"));
-      currentChunk = [];
-      currentSize = 0;
+      pushCurrentChunk();
     }
     currentChunk.push(line);
     currentSize += lineSize;
   }
-  if (currentChunk.length > 0) {
-    chunks.push(currentChunk.join("\n"));
-  }
+  pushCurrentChunk();
   return chunks;
 }
 
@@ -123,27 +276,31 @@ function mergeChunkResults(chunkResults: FacetResult[][]): Record<FacetType, Fac
     let mergedData: any;
     switch (ft) {
       case "summary": {
-        // Take first chunk's thesis/overview, merge sections from all chunks
-        mergedData = { ...allData[0] };
-        if (allData.length > 1) {
-          const allSections = allData.flatMap((d: any) => d.summary?.sections ?? []);
-          mergedData.summary = { ...mergedData.summary, sections: allSections };
-        }
+        const summaries = allData.map((d: any) => d.summary).filter(Boolean);
+        const allSections = dedupeById(summaries.flatMap((summary: any) => summary.sections ?? []));
+        mergedData = {
+          documentId,
+          summary: {
+            thesis: joinUniqueSentences(summaries.map((summary: any) => summary.thesis ?? "")),
+            overview: joinUniqueParagraphs(summaries.map((summary: any) => summary.overview ?? "")),
+            sections: allSections,
+          },
+        };
         break;
       }
       case "concepts": {
-        const allConcepts = allData.flatMap((d: any) => d.concepts ?? []);
-        const allRelationships = allData.flatMap((d: any) => d.relationships ?? []);
+        const allConcepts = dedupeById(allData.flatMap((d: any) => d.concepts ?? []));
+        const allRelationships = dedupeRelationships(allData.flatMap((d: any) => d.relationships ?? []));
         mergedData = { documentId, concepts: allConcepts, relationships: allRelationships };
         break;
       }
       case "arguments": {
-        const allArgs = allData.flatMap((d: any) => d.arguments ?? []);
+        const allArgs = dedupeById(allData.flatMap((d: any) => d.arguments ?? []));
         mergedData = { documentId, arguments: allArgs };
         break;
       }
       case "qa": {
-        const allQuestions = allData.flatMap((d: any) => d.questions ?? []);
+        const allQuestions = dedupeById(allData.flatMap((d: any) => d.questions ?? []));
         mergedData = { documentId, questions: allQuestions };
         break;
       }
@@ -169,14 +326,15 @@ async function processDocument(
     const chunkResults: FacetResult[][] = [];
 
     for (let i = 0; i < chunks.length; i++) {
-      const chunkInput: AgentInput = {
-        documentId: file.documentId,
-        filePath: file.relativePath,
-        title: `${extractTitle(file.relativePath)} (chunk ${i + 1}/${chunks.length})`,
-        content: chunks[i],
-      };
-      const settled = await Promise.allSettled(
-        facetsToRun.map((ft) => processOneFacet(ft, chunkInput, agentExecutor, rootDir)),
+        const chunkInput: AgentInput = {
+          documentId: file.documentId,
+          filePath: file.relativePath,
+          title: `${extractTitle(file.relativePath)} (chunk ${i + 1}/${chunks.length})`,
+          content: chunks[i].content,
+          lineOffset: chunks[i].startLine - 1,
+        };
+        const settled = await Promise.allSettled(
+        facetsToRun.map((ft) => processOneFacet(ft, chunkInput, agentExecutor, rootDir, i)),
       );
       const results: FacetResult[] = settled.map((r, idx) =>
         r.status === "fulfilled"
@@ -367,7 +525,7 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
       for (const ft of ALL_FACETS) {
         try {
           await unlink(
-            join(rootDir, ".text-comprehend", "facets", ft, `${entry.documentId}.json`),
+            getFacetOutputPath(rootDir, ft, entry.documentId),
           );
         } catch {
           // File may not exist, ignore
@@ -381,6 +539,12 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
 
   // 6. Save manifest
   await manifestManager.save(manifest);
+
+  try {
+    await buildKnowledgeGraph(rootDir);
+  } catch (error) {
+    errors.push(`Failed to build knowledge graph: ${error instanceof Error ? error.message : String(error)}`);
+  }
 
   return {
     documentsProcessed: allResults.length,

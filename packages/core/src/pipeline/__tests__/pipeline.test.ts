@@ -120,6 +120,11 @@ describe("pipeline", () => {
     expect(docResult.facets.concepts.success).toBe(true);
     expect(docResult.facets.arguments.success).toBe(true);
     expect(docResult.facets.qa.success).toBe(true);
+
+    const graphRaw = await readFile(join(rootDir, ".text-comprehend", "knowledge-graph.json"), "utf-8");
+    const graph = JSON.parse(graphRaw);
+    expect(graph.documents).toHaveLength(1);
+    expect(graph.documents[0].filePath).toBe("test-doc.md");
   });
 
   it("batches documents correctly with >5 docs", async () => {
@@ -304,5 +309,266 @@ describe("pipeline", () => {
     // Facet files should be gone
     const summaryAfter = await loadFacetOutput(rootDir, "summary", docId);
     expect(summaryAfter).toBeNull();
+  });
+
+  it("reassembles chunked summaries without keeping the first chunk overview", async () => {
+    const largeContent = [
+      "# Section 1",
+      "alpha",
+      ...Array.from({ length: 9000 }, () => "A".repeat(12)),
+      "# Section 2",
+      "beta",
+      ...Array.from({ length: 9000 }, () => "B".repeat(12)),
+    ].join("\n");
+    await createTestFile("large-doc.md", largeContent);
+
+    const executor: AgentExecutor = async (prompt) => {
+      if (prompt.includes("summarization specialist")) {
+        const docIdMatch = prompt.match(/Document ID: (\S+)/);
+        if (prompt.includes("chunk 1/")) {
+          return JSON.stringify({
+            documentId: docIdMatch?.[1] ?? "unknown",
+            summary: {
+              thesis: "Chunk 1 thesis",
+              overview: "Overview for chunk 1.",
+              sections: [
+                {
+                  id: "sec-1",
+                  heading: "Section 1",
+                  summary: "Section one summary",
+                  keyPoints: ["alpha"],
+                  sourceRange: { documentId: docIdMatch?.[1] ?? "unknown", startLine: 1, endLine: 2, excerpt: "alpha" },
+                },
+              ],
+            },
+          });
+        }
+
+        return JSON.stringify({
+          documentId: docIdMatch?.[1] ?? "unknown",
+          summary: {
+            thesis: "Chunk 2 thesis",
+            overview: "Overview for chunk 2.",
+            sections: [
+              {
+                id: "sec-2",
+                heading: "Section 2",
+                summary: "Section two summary",
+                keyPoints: ["beta"],
+                sourceRange: { documentId: docIdMatch?.[1] ?? "unknown", startLine: 3, endLine: 4, excerpt: "beta" },
+              },
+            ],
+          },
+        });
+      }
+
+      return createMockExecutor()(prompt);
+    };
+
+    const result = await runPipeline({ rootDir, agentExecutor: executor });
+    const summary = result.results[0].facets.summary;
+    const sections = (summary.data as any).summary.sections;
+
+    expect(summary.success).toBe(true);
+    expect((summary.data as any).summary.thesis).toBe("Chunk 1 thesis Chunk 2 thesis");
+    expect((summary.data as any).summary.overview).toContain("Overview for chunk 1.");
+    expect((summary.data as any).summary.overview).toContain("Overview for chunk 2.");
+    expect(sections.length).toBeGreaterThan(1);
+    expect(sections.some((section: any) => section.heading === "Section 1")).toBe(true);
+    expect(sections.some((section: any) => section.heading === "Section 2")).toBe(true);
+  });
+
+  it("keeps chunked facet items with repeated local ids by normalizing them", async () => {
+    const largeContent = [
+      "# Section 1",
+      "alpha",
+      ...Array.from({ length: 9000 }, () => "A".repeat(12)),
+      "# Section 2",
+      "beta",
+      ...Array.from({ length: 9000 }, () => "B".repeat(12)),
+    ].join("\n");
+    await createTestFile("repeated-ids.md", largeContent);
+
+    const executor: AgentExecutor = async (prompt) => {
+      const docIdMatch = prompt.match(/Document ID: (\S+)/);
+      const documentId = docIdMatch?.[1] ?? "unknown";
+      const isFirstChunk = prompt.includes("chunk 1/");
+
+      if (prompt.includes("summarization specialist")) {
+        return JSON.stringify({
+          documentId,
+          summary: {
+            thesis: isFirstChunk ? "Chunk A" : "Chunk B",
+            overview: isFirstChunk ? "Overview A" : "Overview B",
+            sections: [
+              {
+                id: "sec-1",
+                heading: isFirstChunk ? "Section A" : "Section B",
+                summary: isFirstChunk ? "Summary A" : "Summary B",
+                keyPoints: [isFirstChunk ? "alpha" : "beta"],
+                sourceRange: { documentId, startLine: 1, endLine: 2, excerpt: isFirstChunk ? "alpha" : "beta" },
+              },
+            ],
+          },
+        });
+      }
+
+      if (prompt.includes("concept extraction specialist")) {
+        return JSON.stringify({
+          documentId,
+          concepts: [
+            {
+              id: "concept-1",
+              name: isFirstChunk ? "Alpha" : "Beta",
+              definition: isFirstChunk ? "Concept A" : "Concept B",
+              importance: "core",
+              sourceRefs: [{ documentId, startLine: 1, endLine: 2, excerpt: isFirstChunk ? "alpha" : "beta" }],
+            },
+          ],
+          relationships: [],
+        });
+      }
+
+      if (prompt.includes("argument analysis specialist")) {
+        return JSON.stringify({
+          documentId,
+          arguments: [
+            {
+              id: "arg-1",
+              claim: isFirstChunk ? "Claim A" : "Claim B",
+              type: "main",
+              evidence: [],
+              assumptions: [],
+              gaps: [],
+              sourceRefs: [{ documentId, startLine: 1, endLine: 2, excerpt: isFirstChunk ? "alpha" : "beta" }],
+            },
+          ],
+        });
+      }
+
+      if (prompt.includes("comprehension assessment specialist")) {
+        return JSON.stringify({
+          documentId,
+          questions: [
+            {
+              id: "q-1",
+              question: isFirstChunk ? "Question A?" : "Question B?",
+              answer: isFirstChunk ? "Answer A" : "Answer B",
+              difficulty: "basic",
+              facet: "factual",
+              sourceRefs: [{ documentId, startLine: 1, endLine: 2, excerpt: isFirstChunk ? "alpha" : "beta" }],
+            },
+          ],
+        });
+      }
+
+      return "{}";
+    };
+
+    const result = await runPipeline({ rootDir, agentExecutor: executor });
+    const facets = result.results[0].facets;
+    const sections = (facets.summary.data as any).summary.sections;
+    const concepts = (facets.concepts.data as any).concepts;
+    const argumentsData = (facets.arguments.data as any).arguments;
+    const questions = (facets.qa.data as any).questions;
+
+    expect(sections.length).toBeGreaterThan(1);
+    expect(new Set(sections.map((section: any) => section.id)).size).toBe(sections.length);
+    expect(sections[0].id).toBe("sec-1");
+    expect(sections.slice(1).every((section: any) => section.id.startsWith("sec-1-chunk-"))).toBe(true);
+
+    expect(concepts.length).toBeGreaterThan(1);
+    expect(new Set(concepts.map((concept: any) => concept.id)).size).toBe(concepts.length);
+    expect(concepts[0].id).toBe("concept-1");
+    expect(concepts.slice(1).every((concept: any) => concept.id.startsWith("concept-1-chunk-"))).toBe(true);
+
+    expect(argumentsData.length).toBeGreaterThan(1);
+    expect(new Set(argumentsData.map((argument: any) => argument.id)).size).toBe(argumentsData.length);
+    expect(argumentsData[0].id).toBe("arg-1");
+    expect(argumentsData.slice(1).every((argument: any) => argument.id.startsWith("arg-1-chunk-"))).toBe(true);
+
+    expect(questions.length).toBeGreaterThan(1);
+    expect(new Set(questions.map((question: any) => question.id)).size).toBe(questions.length);
+    expect(questions[0].id).toBe("q-1");
+    expect(questions.slice(1).every((question: any) => question.id.startsWith("q-1-chunk-"))).toBe(true);
+  });
+
+  it("offsets chunk source lines before linking supporting arguments", async () => {
+    const largeContent = [
+      "# Main A",
+      "alpha",
+      ...Array.from({ length: 9000 }, () => "A".repeat(12)),
+      "# Main B",
+      "beta",
+      ...Array.from({ length: 9000 }, () => "B".repeat(12)),
+    ].join("\n");
+    await createTestFile("chunk-lines.md", largeContent);
+
+    const executor: AgentExecutor = async (prompt) => {
+      const documentId = prompt.match(/Document ID: (\S+)/)?.[1] ?? "unknown";
+      if (prompt.includes("summarization specialist")) {
+        return JSON.stringify({
+          documentId,
+          summary: { thesis: "T", overview: "O", sections: [] },
+        });
+      }
+      if (prompt.includes("concept extraction specialist")) {
+        return JSON.stringify({ documentId, concepts: [], relationships: [] });
+      }
+      if (prompt.includes("comprehension assessment specialist")) {
+        return JSON.stringify({ documentId, questions: [] });
+      }
+      if (prompt.includes("argument analysis specialist") && prompt.includes("chunk 1/")) {
+        return JSON.stringify({
+          documentId,
+          arguments: [
+            {
+              id: "arg-1",
+              claim: "Main claim A",
+              type: "main",
+              evidence: [],
+              assumptions: [],
+              gaps: [],
+              sourceRefs: [{ documentId, startLine: 1, endLine: 2, excerpt: "alpha" }],
+            },
+          ],
+        });
+      }
+      if (prompt.includes("argument analysis specialist")) {
+        return JSON.stringify({
+          documentId,
+          arguments: [
+            {
+              id: "arg-1",
+              claim: "Main claim B",
+              type: "main",
+              evidence: [],
+              assumptions: [],
+              gaps: [],
+              sourceRefs: [{ documentId, startLine: 1, endLine: 2, excerpt: "beta" }],
+            },
+            {
+              id: "arg-2",
+              claim: "Support for B",
+              type: "supporting",
+              evidence: [],
+              assumptions: [],
+              gaps: [],
+              sourceRefs: [{ documentId, startLine: 3, endLine: 4, excerpt: "beta support" }],
+            },
+          ],
+        });
+      }
+      return "{}";
+    };
+
+    const result = await runPipeline({ rootDir, agentExecutor: executor });
+    const graphRaw = await readFile(join(rootDir, ".text-comprehend", "knowledge-graph.json"), "utf-8");
+    const graph = JSON.parse(graphRaw);
+    const supportEdge = graph.edges.find((edge: any) => edge.source.startsWith("arg-2") && edge.type === "supports");
+
+    expect(result.results[0].facets.arguments.success).toBe(true);
+    expect(supportEdge).toBeDefined();
+    expect(supportEdge.target).toBe("arg-1-chunk-2");
   });
 });

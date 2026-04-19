@@ -35,6 +35,11 @@ describe("buildSummarizerPrompt", () => {
     expect(prompt).toContain("overview");
     expect(prompt).toContain("sections");
   });
+
+  it("requires 1-based line numbers in summary source references", () => {
+    const prompt = buildSummarizerPrompt(SAMPLE_INPUT);
+    expect(prompt).toContain("1-based");
+  });
 });
 
 describe("buildConceptExtractorPrompt", () => {
@@ -48,6 +53,11 @@ describe("buildConceptExtractorPrompt", () => {
     expect(prompt).toContain("core");
     expect(prompt).toContain("supporting");
     expect(prompt).toContain("peripheral");
+  });
+
+  it("requires 1-based line numbers in concept source references", () => {
+    const prompt = buildConceptExtractorPrompt(SAMPLE_INPUT);
+    expect(prompt).toContain("1-based");
   });
 });
 
@@ -63,6 +73,16 @@ describe("buildArgumentMapperPrompt", () => {
     expect(prompt).toContain("evidence");
     expect(prompt).toContain("assumptions");
     expect(prompt).toContain("gaps");
+  });
+
+  it("does not request parentClaimId in the output schema", () => {
+    const prompt = buildArgumentMapperPrompt(SAMPLE_INPUT);
+    expect(prompt).not.toContain("parentClaimId");
+  });
+
+  it("requires 1-based line numbers in argument source references", () => {
+    const prompt = buildArgumentMapperPrompt(SAMPLE_INPUT);
+    expect(prompt).toContain("1-based");
   });
 });
 
@@ -84,5 +104,10 @@ describe("buildQAGeneratorPrompt", () => {
     expect(prompt).toContain("factual");
     expect(prompt).toContain("inferential");
     expect(prompt).toContain("evaluative");
+  });
+
+  it("requires 1-based line numbers in question source references", () => {
+    const prompt = buildQAGeneratorPrompt(SAMPLE_INPUT);
+    expect(prompt).toContain("1-based");
   });
 });

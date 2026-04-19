@@ -3,4 +3,5 @@ export interface AgentInput {
   filePath: string;
   title: string;
   content: string;
+  lineOffset?: number;
 }

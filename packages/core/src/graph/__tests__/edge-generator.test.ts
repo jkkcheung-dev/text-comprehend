@@ -18,7 +18,7 @@ function makeDoc(overrides: Partial<DocumentNode> = {}): DocumentNode {
   };
 }
 
-const ref = { documentId: "doc-1", startLine: 0, endLine: 1, excerpt: "x" };
+const ref = { documentId: "doc-1", startLine: 1, endLine: 1, excerpt: "x" };
 
 describe("generateEdges", () => {
   it("generates contains edges for sections", () => {
@@ -69,32 +69,7 @@ describe("generateEdges", () => {
     expect(generateEdges([], new Map())).toEqual([]);
   });
 
-  it("generates supports edge using parentClaimId", () => {
-    const doc = makeDoc({
-      arguments: [
-        { id: "a-m1", claim: "main 1", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-        { id: "a-m2", claim: "main 2", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-        { id: "a-sup", claim: "sup", type: "supporting", parentClaimId: "a-m2", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-      ],
-    });
-    const edges = generateEdges([doc], new Map());
-    // Should only link to a-m2, not a-m1
-    expect(edges).toContainEqual({ source: "a-sup", target: "a-m2", type: "supports" });
-    expect(edges).not.toContainEqual({ source: "a-sup", target: "a-m1", type: "supports" });
-  });
-
-  it("generates contradicts edge using parentClaimId", () => {
-    const doc = makeDoc({
-      arguments: [
-        { id: "a-m1", claim: "main 1", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-        { id: "a-counter", claim: "counter", type: "counter", parentClaimId: "a-m1", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-      ],
-    });
-    const edges = generateEdges([doc], new Map());
-    expect(edges).toContainEqual({ source: "a-counter", target: "a-m1", type: "contradicts" });
-  });
-
-  it("falls back to nearest main by source line when no parentClaimId", () => {
+  it("links supporting arguments to the nearest main argument by source line", () => {
     const doc = makeDoc({
       arguments: [
         { id: "a-m1", claim: "main 1", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 1 }] },
@@ -108,7 +83,20 @@ describe("generateEdges", () => {
     expect(edges).not.toContainEqual({ source: "a-sup", target: "a-m1", type: "supports" });
   });
 
-  it("generates evidence→argument supports edges", () => {
+  it("links counter arguments to the nearest main argument by source line", () => {
+    const doc = makeDoc({
+      arguments: [
+        { id: "a-m1", claim: "main 1", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 5 }] },
+        { id: "a-m2", claim: "main 2", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 30 }] },
+        { id: "a-counter", claim: "counter", type: "counter", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 6 }] },
+      ],
+    });
+    const edges = generateEdges([doc], new Map());
+    expect(edges).toContainEqual({ source: "a-counter", target: "a-m1", type: "contradicts" });
+    expect(edges).not.toContainEqual({ source: "a-counter", target: "a-m2", type: "contradicts" });
+  });
+
+  it("does not create edges to synthetic evidence nodes", () => {
     const doc = makeDoc({
       arguments: [
         {
@@ -122,8 +110,8 @@ describe("generateEdges", () => {
       ],
     });
     const edges = generateEdges([doc], new Map());
-    expect(edges).toContainEqual({ source: "a-1-ev-0", target: "a-1", type: "supports" });
-    expect(edges).toContainEqual({ source: "a-1-ev-1", target: "a-1", type: "supports" });
+    expect(edges.some((edge) => edge.source.startsWith("a-1-ev-"))).toBe(false);
+    expect(edges.some((edge) => edge.target.startsWith("a-1-ev-"))).toBe(false);
   });
 
   it("includes depends_on concept relationships", () => {
@@ -167,12 +155,12 @@ describe("generateEdges", () => {
       concepts: [
         { id: "c-1", name: "A", definition: "d", importance: "core", sourceRefs: [ref] },
         { id: "c-2", name: "B", definition: "d", importance: "core", sourceRefs: [ref] },
-      ],
-      arguments: [
-        { id: "a-1", claim: "claim", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-        { id: "a-2", claim: "sup", type: "supporting", parentClaimId: "a-1", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
-      ],
-    });
+        ],
+        arguments: [
+          { id: "a-1", claim: "claim", type: "main", evidence: [], assumptions: [], gaps: [], sourceRefs: [ref] },
+          { id: "a-2", claim: "sup", type: "supporting", evidence: [], assumptions: [], gaps: [], sourceRefs: [{ ...ref, startLine: 2 }] },
+        ],
+      });
     // Concept relationship duplicates the structural supports edge
     const rels = new Map([["doc-1", [{ source: "a-2", target: "a-1", type: "supports" as const }]]]);
     const edges = generateEdges([doc], rels);

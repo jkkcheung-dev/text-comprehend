@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, extname, join } from "node:path";
 import { ManifestManager } from "../manifest/manifest-manager.js";
 import { loadAllFacetsForDocument } from "../pipeline/facet-persistence.js";
 import {
@@ -12,7 +12,7 @@ import { KnowledgeGraphSchema, type KnowledgeGraph, type DocumentNode } from "..
 import type { z } from "zod";
 import type { ConceptRelationshipSchema } from "../agents/schemas/index.js";
 import { generateEdges } from "./edge-generator.js";
-import { deduplicateConcepts, findOrphans } from "./dedup.js";
+import { findOrphans } from "./dedup.js";
 
 type ConceptRelationship = z.infer<typeof ConceptRelationshipSchema>;
 
@@ -24,6 +24,10 @@ const DEFAULT_SUMMARY = {
   overview: "Analysis pending",
   sections: [],
 };
+
+function inferTitle(filePath: string): string {
+  return basename(filePath, extname(filePath)).replace(/[-_]/g, " ");
+}
 
 export async function buildKnowledgeGraph(rootDir: string): Promise<KnowledgeGraph> {
   const mm = new ManifestManager(rootDir);
@@ -57,7 +61,7 @@ export async function buildKnowledgeGraph(rootDir: string): Promise<KnowledgeGra
     const doc: DocumentNode = {
       id: entry.documentId,
       filePath,
-      title: filePath.split("/").pop() ?? filePath,
+      title: inferTitle(filePath),
       fileType,
       lastAnalyzed: entry.lastAnalyzed,
       fileHash: entry.fileHash,
@@ -70,26 +74,11 @@ export async function buildKnowledgeGraph(rootDir: string): Promise<KnowledgeGra
     documents.push(doc);
   }
 
-  // Deduplicate concepts
-  const { documents: dedupedDocs, idMap } = deduplicateConcepts(documents);
-
-  // Remap concept relationship IDs
-  for (const [docId, rels] of conceptRelationships) {
-    conceptRelationships.set(
-      docId,
-      rels.map((r) => ({
-        ...r,
-        source: idMap.get(r.source) ?? r.source,
-        target: idMap.get(r.target) ?? r.target,
-      })),
-    );
-  }
-
   // Generate edges
-  const edges = generateEdges(dedupedDocs, conceptRelationships);
+  const edges = generateEdges(documents, conceptRelationships);
 
   // Detect orphans
-  const orphans = findOrphans(dedupedDocs, edges);
+  const orphans = findOrphans(documents, edges);
   if (orphans.length > 0) {
     console.warn(`[graph-builder] ${orphans.length} orphan node(s): ${orphans.join(", ")}`);
   }
@@ -97,7 +86,7 @@ export async function buildKnowledgeGraph(rootDir: string): Promise<KnowledgeGra
   const kg: KnowledgeGraph = {
     version: "1.0.0",
     generatedAt: new Date().toISOString(),
-    documents: dedupedDocs,
+    documents,
     edges,
   };
 

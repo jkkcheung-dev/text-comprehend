@@ -30,17 +30,17 @@ async function setupFixture() {
   };
   await writeFile(join(tcDir, "manifest.json"), JSON.stringify(manifest));
 
-  const ref = { documentId: "doc-1", startLine: 0, endLine: 1, excerpt: "x" };
+  const ref = { documentId: "doc-1", startLine: 1, endLine: 1, excerpt: "x" };
 
   // Write facet files
   const facetsDir = join(tcDir, "facets");
-  await mkdir(join(facetsDir, "summary"), { recursive: true });
+  await mkdir(join(facetsDir, "summaries"), { recursive: true });
   await mkdir(join(facetsDir, "concepts"), { recursive: true });
   await mkdir(join(facetsDir, "arguments"), { recursive: true });
   await mkdir(join(facetsDir, "qa"), { recursive: true });
 
   await writeFile(
-    join(facetsDir, "summary", "doc-1.json"),
+    join(facetsDir, "summaries", "doc-1.json"),
     JSON.stringify({
       documentId: "doc-1",
       summary: {
@@ -129,13 +129,46 @@ describe("buildKnowledgeGraph", () => {
     expect(kg.documents[0].questions).toEqual([]);
   });
 
+  it("falls back to the legacy summary directory for existing analyses", async () => {
+    const root = join(tmpdir(), `tc-test-${randomUUID()}`);
+    const tcDir = join(root, ".text-comprehend");
+    await mkdir(join(tcDir, "facets", "summary"), { recursive: true });
+
+    const manifest = {
+      version: "1.0.0",
+      lastRun: "2025-01-01T00:00:00.000Z",
+      files: {
+        "doc.md": {
+          documentId: "legacy-doc",
+          fileHash: "legacy-hash",
+          lastAnalyzed: "2025-01-01T00:00:00.000Z",
+          facets: {
+            summary: { status: "success" },
+            concepts: { status: "pending" },
+            arguments: { status: "pending" },
+            qa: { status: "pending" },
+          },
+        },
+      },
+    };
+    await writeFile(join(tcDir, "manifest.json"), JSON.stringify(manifest));
+    await writeFile(join(tcDir, "facets", "summary", "legacy-doc.json"), JSON.stringify({
+      documentId: "legacy-doc",
+      summary: { thesis: "Legacy thesis", overview: "Legacy overview", sections: [] },
+    }));
+
+    const kg = await buildKnowledgeGraph(root);
+    expect(kg.documents).toHaveLength(1);
+    expect(kg.documents[0].summary.thesis).toBe("Legacy thesis");
+  });
+
   it("builds a multi-document graph and writes knowledge-graph.json to disk", async () => {
     const root = join(tmpdir(), `tc-test-${randomUUID()}`);
     const tcDir = join(root, ".text-comprehend");
     await mkdir(tcDir, { recursive: true });
 
-    const ref1 = { documentId: "doc-a", startLine: 0, endLine: 1, excerpt: "x" };
-    const ref2 = { documentId: "doc-b", startLine: 0, endLine: 1, excerpt: "y" };
+    const ref1 = { documentId: "doc-a", startLine: 1, endLine: 1, excerpt: "x" };
+    const ref2 = { documentId: "doc-b", startLine: 1, endLine: 1, excerpt: "y" };
 
     const manifest = {
       version: "1.0.0",
@@ -158,12 +191,12 @@ describe("buildKnowledgeGraph", () => {
     await writeFile(join(tcDir, "manifest.json"), JSON.stringify(manifest));
 
     const facetsDir = join(tcDir, "facets");
-    for (const ft of ["summary", "concepts", "arguments", "qa"]) {
+    for (const ft of ["summaries", "concepts", "arguments", "qa"]) {
       await mkdir(join(facetsDir, ft), { recursive: true });
     }
 
     for (const [docId, ref] of [["doc-a", ref1], ["doc-b", ref2]] as const) {
-      await writeFile(join(facetsDir, "summary", `${docId}.json`), JSON.stringify({
+      await writeFile(join(facetsDir, "summaries", `${docId}.json`), JSON.stringify({
         documentId: docId,
         summary: { thesis: `Thesis ${docId}`, overview: "Overview", sections: [{ id: `sec-${docId}`, heading: "H", summary: "S", keyPoints: ["k"], sourceRange: ref }] },
       }));
@@ -187,5 +220,59 @@ describe("buildKnowledgeGraph", () => {
     const parsed = JSON.parse(raw);
     expect(parsed.documents).toHaveLength(2);
     expect(parsed.version).toBe("1.0.0");
+  });
+
+  it("preserves same-named concepts in different documents", async () => {
+    const root = await setupFixture();
+    const tcDir = join(root, ".text-comprehend");
+    const manifest = {
+      version: "1.0.0",
+      lastRun: "2025-01-01T00:00:00.000Z",
+      files: {
+        "doc-a.md": {
+          documentId: "doc-a",
+          fileHash: "hash-a",
+          lastAnalyzed: "2025-01-01T00:00:00.000Z",
+          facets: {
+            summary: { status: "success" },
+            concepts: { status: "success" },
+            arguments: { status: "success" },
+            qa: { status: "success" },
+          },
+        },
+        "doc-b.md": {
+          documentId: "doc-b",
+          fileHash: "hash-b",
+          lastAnalyzed: "2025-01-01T00:00:00.000Z",
+          facets: {
+            summary: { status: "success" },
+            concepts: { status: "success" },
+            arguments: { status: "success" },
+            qa: { status: "success" },
+          },
+        },
+      },
+    };
+    await writeFile(join(tcDir, "manifest.json"), JSON.stringify(manifest));
+
+    const facetsDir = join(tcDir, "facets");
+    for (const docId of ["doc-a", "doc-b"]) {
+      await writeFile(join(facetsDir, "summaries", `${docId}.json`), JSON.stringify({
+        documentId: docId,
+        summary: { thesis: `Thesis ${docId}`, overview: "Overview", sections: [] },
+      }));
+      await writeFile(join(facetsDir, "concepts", `${docId}.json`), JSON.stringify({
+        documentId: docId,
+        concepts: [{ id: `c-${docId}`, name: "SharedConcept", definition: "def", importance: "core", sourceRefs: [{ documentId: docId, startLine: 1, endLine: 1, excerpt: "x" }] }],
+        relationships: [],
+      }));
+      await writeFile(join(facetsDir, "arguments", `${docId}.json`), JSON.stringify({ documentId: docId, arguments: [] }));
+      await writeFile(join(facetsDir, "qa", `${docId}.json`), JSON.stringify({ documentId: docId, questions: [] }));
+    }
+
+    const kg = await buildKnowledgeGraph(root);
+    expect(kg.documents).toHaveLength(2);
+    expect(kg.documents[0].concepts).toHaveLength(1);
+    expect(kg.documents[1].concepts).toHaveLength(1);
   });
 });

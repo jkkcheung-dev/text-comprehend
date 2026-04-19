@@ -1,6 +1,9 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { resolve, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { join } from "node:path";
+import { tmpdir } from "node:os";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const FIXTURES_DIR = resolve(
@@ -12,6 +15,16 @@ const FIXTURES_DIR = resolve(
 const { scanDirectory } = await import("../scanner.js");
 
 describe("scanDirectory", () => {
+  let tempRoot: string;
+
+  beforeEach(async () => {
+    tempRoot = await mkdtemp(join(tmpdir(), "tc-scan-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempRoot, { recursive: true, force: true });
+  });
+
   it("discovers supported text files", async () => {
     const result = await scanDirectory(FIXTURES_DIR);
     const paths = result.files.map((f: any) => f.relativePath).sort();
@@ -89,5 +102,23 @@ describe("scanDirectory", () => {
     expect(result.scannedAt).toBeTruthy();
     expect(result.rootDir).toBe(FIXTURES_DIR);
     expect(result.totalFiles).toBe(result.files.length);
+  });
+
+  it("includes supported hidden files while still skipping internal directories", async () => {
+    await mkdir(join(tempRoot, ".text-comprehend", "facets", "summaries"), { recursive: true });
+    await mkdir(join(tempRoot, ".git"), { recursive: true });
+    await mkdir(join(tempRoot, "node_modules", "pkg"), { recursive: true });
+    await writeFile(join(tempRoot, ".notes.md"), "# Hidden Notes\n\nKeep me.", "utf-8");
+    await writeFile(join(tempRoot, ".text-comprehend", "facets", "summaries", "generated.md"), "generated", "utf-8");
+    await writeFile(join(tempRoot, ".git", "config.md"), "ignored", "utf-8");
+    await writeFile(join(tempRoot, "node_modules", "pkg", "readme.md"), "ignored", "utf-8");
+
+    const result = await scanDirectory(tempRoot);
+    const paths = result.files.map((file: any) => file.relativePath).sort();
+
+    expect(paths).toContain(".notes.md");
+    expect(paths).not.toContain(".text-comprehend/facets/summaries/generated.md");
+    expect(paths).not.toContain(".git/config.md");
+    expect(paths).not.toContain("node_modules/pkg/readme.md");
   });
 });

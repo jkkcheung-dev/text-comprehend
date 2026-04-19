@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const SourceRefSchema = z.object({
   documentId: z.string(),
-  startLine: z.number().int().nonnegative(),
-  endLine: z.number().int().nonnegative(),
+  startLine: z.number().int().positive(),
+  endLine: z.number().int().positive(),
   excerpt: z.string(),
 }).refine(
   (data) => data.endLine >= data.startLine,

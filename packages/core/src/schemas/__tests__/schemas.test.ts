@@ -46,6 +46,17 @@ describe("SourceRefSchema", () => {
       })
     ).toThrow();
   });
+
+  it("rejects zero line numbers", () => {
+    expect(() =>
+      SourceRefSchema.parse({
+        documentId: "abc123def456",
+        startLine: 0,
+        endLine: 1,
+        excerpt: "Invalid line",
+      })
+    ).toThrow();
+  });
 });
 
 describe("HierarchicalSummarySchema", () => {

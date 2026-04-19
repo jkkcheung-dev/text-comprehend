@@ -5,7 +5,18 @@ import type { FacetType } from "./types.js";
 const OUTPUT_DIR = ".text-comprehend";
 const FACETS_DIR = "facets";
 
-function facetPath(rootDir: string, facetType: FacetType, documentId: string): string {
+const FACET_DIRECTORY_NAMES: Record<FacetType, string> = {
+  summary: "summaries",
+  concepts: "concepts",
+  arguments: "arguments",
+  qa: "qa",
+};
+
+export function getFacetOutputPath(rootDir: string, facetType: FacetType, documentId: string): string {
+  return join(rootDir, OUTPUT_DIR, FACETS_DIR, FACET_DIRECTORY_NAMES[facetType], `${documentId}.json`);
+}
+
+function getLegacyFacetOutputPath(rootDir: string, facetType: FacetType, documentId: string): string {
   return join(rootDir, OUTPUT_DIR, FACETS_DIR, facetType, `${documentId}.json`);
 }
 
@@ -15,7 +26,7 @@ export async function saveFacetOutput(
   documentId: string,
   data: unknown,
 ): Promise<void> {
-  const filePath = facetPath(rootDir, facetType, documentId);
+  const filePath = getFacetOutputPath(rootDir, facetType, documentId);
   await mkdir(dirname(filePath), { recursive: true });
   await writeFile(filePath, JSON.stringify(data, null, 2), "utf-8");
 }
@@ -26,9 +37,17 @@ export async function loadFacetOutput(
   documentId: string,
 ): Promise<unknown | null> {
   try {
-    const raw = await readFile(facetPath(rootDir, facetType, documentId), "utf-8");
+    const raw = await readFile(getFacetOutputPath(rootDir, facetType, documentId), "utf-8");
     return JSON.parse(raw);
   } catch {
+    if (facetType === "summary") {
+      try {
+        const legacyRaw = await readFile(getLegacyFacetOutputPath(rootDir, facetType, documentId), "utf-8");
+        return JSON.parse(legacyRaw);
+      } catch {
+        return null;
+      }
+    }
     return null;
   }
 }
