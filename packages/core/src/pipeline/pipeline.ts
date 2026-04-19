@@ -18,6 +18,7 @@ import {
 import { saveFacetOutput } from "./facet-persistence.js";
 import { getFacetOutputPath } from "./facet-persistence.js";
 import { buildKnowledgeGraph } from "../graph/index.js";
+import { renderMarkdownOutput } from "../renderer/index.js";
 import type {
   FacetType,
   AgentExecutor,
@@ -544,6 +545,12 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
     await buildKnowledgeGraph(rootDir);
   } catch (error) {
     errors.push(`Failed to build knowledge graph: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  try {
+    await renderMarkdownOutput(rootDir);
+  } catch (error) {
+    errors.push(`Failed to render markdown output: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   return {
