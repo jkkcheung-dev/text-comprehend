@@ -5,12 +5,12 @@
 
 ## Overview
 
-Text Comprehend is an AI agent plugin for Claude Code and OpenCode that deeply analyzes text documents in a working directory, extracts structured comprehension data using parallel specialist agents, and provides an interactive mind-map dashboard for exploring the results.
+Text Comprehend is an AI agent plugin designed for OpenCode first, with Claude Code support following once the workflow is proven. It deeply analyzes text documents in a working directory, extracts structured comprehension data using parallel specialist agents, and provides an interactive mind-map dashboard for exploring the results.
 
 **Core problems solved:** comprehension depth (help people actually grasp what they read) and retention/synthesis (help people remember and connect ideas).
 
 **Input:** Text files in the working directory (.md, .txt, .pdf, .rst, .html, .docx).
-**Output:** Structured JSON knowledge graph + human-readable markdown summaries + interactive single-page mind-map UI.
+**Output:** Structured JSON knowledge graph + human-readable markdown summaries + an interactive single-page mind-map UI when dashboard support is available.
 
 ## Landscape Context
 
@@ -61,6 +61,14 @@ text-comprehend/
 | `/comprehend-chat` | Ask questions about the analyzed documents |
 | `/comprehend-explore` | Launch the interactive mind map dashboard |
 | `/comprehend-summary <file>` | Quick summary of a specific file |
+
+For the OpenCode-first milestone:
+
+- `/comprehend` must call a real repository script that executes the production pipeline.
+- `/comprehend --retry-failed` must invoke the same command path with retry behavior enabled.
+- `/comprehend-summary <file>` must call a real repository script that resolves the requested file against analyzed documents and prints the corresponding layered summary.
+- If the requested file exists on disk but has not been analyzed yet, the summary command may analyze just that file and then print its summary.
+- `scripts/test-drive.ts` remains a developer utility for ad hoc inspection and schema validation; it is not the user-facing command entrypoint.
 
 ### Output Directory
 
@@ -207,7 +215,9 @@ interface SourceRef {
 
 ### How It Launches
 
-The `/comprehend-explore` command:
+During the OpenCode-first milestone, `/comprehend-explore` may report that the dashboard is not yet available.
+
+Once dashboard support is implemented, the `/comprehend-explore` command:
 1. Builds the dashboard (if not already built)
 2. Copies `knowledge-graph.json` + `simplified/` files into the dashboard's public directory
 3. Opens a local dev server (e.g., `http://localhost:5173`)
@@ -283,7 +293,7 @@ The `/comprehend-explore` command:
 
 ### Incremental Update Edge Cases
 - File renamed: treated as delete + new file (hash changes)
-- File deleted: removed from graph on next run
+- File deleted: removed from graph and all generated outputs on next run, including `simplified/<doc-id>/`
 - Manifest corruption: full re-analysis triggered automatically
 
 ## Testing Strategy
@@ -300,6 +310,9 @@ Vitest for all TypeScript tests. Sample test corpus in `tests/fixtures/`.
 ### Integration Tests
 - Agent prompt testing: feed known documents to each agent, validate output structure
 - Pipeline end-to-end: run `/comprehend` on test corpus (3-5 sample documents), verify knowledge-graph.json is valid and complete
+- OpenCode command entrypoint: verify the real command backing `/comprehend` runs the production pipeline and supports `--retry-failed`
+- OpenCode summary entrypoint: verify the real command backing `/comprehend-summary <file>` prints the correct layered summary for analyzed files and can analyze a file on demand when needed
+- Deleted-file cleanup: verify removing a source document also removes its facet outputs and `simplified/<doc-id>/` markdown directory
 
 ### Dashboard Tests
 - Component tests: React Testing Library for graph rendering, facet toggles, search, detail panel
@@ -307,8 +320,8 @@ Vitest for all TypeScript tests. Sample test corpus in `tests/fixtures/`.
 
 ## Target Platforms
 
-- Claude Code (native plugin)
-- OpenCode (plugin config + install instructions)
+- OpenCode (current target: plugin config, install instructions, and real slash-command backing scripts)
+- Claude Code (native plugin), later release after solution working on OpenCode
 - Additional platforms (Codex, Gemini CLI, Cursor) deferred to later releases
 
 ## Future Considerations (Not in Scope for V1)
