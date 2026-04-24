@@ -55,6 +55,8 @@ text-comprehend/
 
 ### Slash Commands
 
+These are custom slash commands exposed by the plugin inside supported AI agents after installation. They are not standalone operating-system shell commands. Their behavior is defined by the plugin command files and the underlying repository implementation they invoke.
+
 | Command | Purpose |
 |---|---|
 | `/comprehend` | Scan and analyze all text files in the working directory |
@@ -207,7 +209,7 @@ interface SourceRef {
 
 ### How It Launches
 
-The `/comprehend-explore` command:
+When the user runs `/comprehend-explore` inside a supported AI agent:
 
 1. Builds the dashboard (if not already built)
 2. Copies `knowledge-graph.json` + `simplified/` files into the dashboard's public directory
