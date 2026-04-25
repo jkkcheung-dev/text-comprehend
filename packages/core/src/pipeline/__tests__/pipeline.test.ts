@@ -290,10 +290,13 @@ describe("pipeline", () => {
     const result1 = await runPipeline({ rootDir, agentExecutor: createMockExecutor() });
     expect(result1.documentsProcessed).toBe(1);
     const docId = result1.results[0].documentId;
+    const simplifiedDocDir = join(rootDir, ".text-comprehend", "simplified", docId);
+    const layeredSummaryPath = join(simplifiedDocDir, "layered-summary.md");
 
     // Verify facet files exist
     const summaryData = await loadFacetOutput(rootDir, "summary", docId);
     expect(summaryData).not.toBeNull();
+    await expect(access(layeredSummaryPath)).resolves.toBeUndefined();
 
     // Delete the source file
     await unlink(join(rootDir, "to-delete.md"));
@@ -309,6 +312,39 @@ describe("pipeline", () => {
     // Facet files should be gone
     const summaryAfter = await loadFacetOutput(rootDir, "summary", docId);
     expect(summaryAfter).toBeNull();
+
+    // Simplified markdown output directory should be gone as well
+    await expect(access(simplifiedDocDir)).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("persists the first markdown heading as the document title", async () => {
+    await createTestFile("heading-fallback.md", "Leading line before heading.\n\n# Preferred Heading\n\nBody text.");
+
+    await runPipeline({ rootDir, agentExecutor: createMockExecutor() });
+
+    const manifestRaw = await readFile(join(rootDir, ".text-comprehend", "manifest.json"), "utf-8");
+    const manifest = JSON.parse(manifestRaw);
+    expect(manifest.files["heading-fallback.md"].title).toBe("Preferred Heading");
+  });
+
+  it("persists the first non-empty content line when no markdown heading exists", async () => {
+    await createTestFile("line-fallback.md", "\n\nFirst meaningful line\n\nSecond paragraph.");
+
+    await runPipeline({ rootDir, agentExecutor: createMockExecutor() });
+
+    const manifestRaw = await readFile(join(rootDir, ".text-comprehend", "manifest.json"), "utf-8");
+    const manifest = JSON.parse(manifestRaw);
+    expect(manifest.files["line-fallback.md"].title).toBe("First meaningful line");
+  });
+
+  it("persists a sanitized filename when the document has no usable heading or content title", async () => {
+    await createTestFile("sanitized_file-name.md", "#\n***\n");
+
+    await runPipeline({ rootDir, agentExecutor: createMockExecutor() });
+
+    const manifestRaw = await readFile(join(rootDir, ".text-comprehend", "manifest.json"), "utf-8");
+    const manifest = JSON.parse(manifestRaw);
+    expect(manifest.files["sanitized_file-name.md"].title).toBe("sanitized file name");
   });
 
   it("reassembles chunked summaries without keeping the first chunk overview", async () => {

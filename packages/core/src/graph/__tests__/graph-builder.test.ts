@@ -17,6 +17,7 @@ async function setupFixture() {
     files: {
       "doc.md": {
         documentId: "doc-1",
+        title: "Fixture Document Title",
         fileHash: "hash1",
         lastAnalyzed: "2025-01-01T00:00:00.000Z",
         facets: {
@@ -107,6 +108,7 @@ describe("buildKnowledgeGraph", () => {
       files: {
         "doc.md": {
           documentId: "doc-2",
+          title: "Missing Facets Document",
           fileHash: "h2",
           lastAnalyzed: "2025-01-01T00:00:00.000Z",
           facets: {
@@ -140,6 +142,7 @@ describe("buildKnowledgeGraph", () => {
       files: {
         "doc.md": {
           documentId: "legacy-doc",
+          title: "Legacy Document Title",
           fileHash: "legacy-hash",
           lastAnalyzed: "2025-01-01T00:00:00.000Z",
           facets: {
@@ -176,12 +179,14 @@ describe("buildKnowledgeGraph", () => {
       files: {
         "a.md": {
           documentId: "doc-a",
+          title: "Document A Title",
           fileHash: "ha",
           lastAnalyzed: "2025-01-01T00:00:00.000Z",
           facets: { summary: { status: "success" }, concepts: { status: "success" }, arguments: { status: "success" }, qa: { status: "success" } },
         },
         "b.md": {
           documentId: "doc-b",
+          title: "Document B Title",
           fileHash: "hb",
           lastAnalyzed: "2025-01-01T00:00:00.000Z",
           facets: { summary: { status: "success" }, concepts: { status: "success" }, arguments: { status: "success" }, qa: { status: "success" } },
@@ -231,6 +236,7 @@ describe("buildKnowledgeGraph", () => {
       files: {
         "doc-a.md": {
           documentId: "doc-a",
+          title: "Doc A Title",
           fileHash: "hash-a",
           lastAnalyzed: "2025-01-01T00:00:00.000Z",
           facets: {
@@ -242,6 +248,7 @@ describe("buildKnowledgeGraph", () => {
         },
         "doc-b.md": {
           documentId: "doc-b",
+          title: "Doc B Title",
           fileHash: "hash-b",
           lastAnalyzed: "2025-01-01T00:00:00.000Z",
           facets: {
@@ -274,5 +281,13 @@ describe("buildKnowledgeGraph", () => {
     expect(kg.documents).toHaveLength(2);
     expect(kg.documents[0].concepts).toHaveLength(1);
     expect(kg.documents[1].concepts).toHaveLength(1);
+  });
+
+  it("uses the persisted manifest title in graph output", async () => {
+    const root = await setupFixture();
+    const kg = await buildKnowledgeGraph(root);
+
+    expect(kg.documents).toHaveLength(1);
+    expect(kg.documents[0].title).toBe("Fixture Document Title");
   });
 });
