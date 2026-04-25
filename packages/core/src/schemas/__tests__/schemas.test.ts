@@ -265,6 +265,7 @@ describe("ManifestSchema", () => {
       files: {
         "docs/example.md": {
           documentId: "abc123def456",
+          title: "Example Document",
           fileHash: "sha256-abc123",
           lastAnalyzed: "2026-03-31T00:00:00.000Z",
           facets: {
@@ -286,6 +287,7 @@ describe("ManifestSchema", () => {
       files: {
         "docs/example.md": {
           documentId: "abc123def456",
+          title: "Example Document",
           fileHash: "sha256-abc123",
           lastAnalyzed: "2026-03-31T00:00:00.000Z",
           facets: {

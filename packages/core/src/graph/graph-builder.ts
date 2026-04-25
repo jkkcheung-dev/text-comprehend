@@ -1,5 +1,5 @@
 import { writeFile, mkdir } from "node:fs/promises";
-import { basename, extname, join } from "node:path";
+import { join } from "node:path";
 import { ManifestManager } from "../manifest/manifest-manager.js";
 import { loadAllFacetsForDocument } from "../pipeline/facet-persistence.js";
 import {
@@ -24,10 +24,6 @@ const DEFAULT_SUMMARY = {
   overview: "Analysis pending",
   sections: [],
 };
-
-function inferTitle(filePath: string): string {
-  return basename(filePath, extname(filePath)).replace(/[-_]/g, " ");
-}
 
 export async function buildKnowledgeGraph(rootDir: string): Promise<KnowledgeGraph> {
   const mm = new ManifestManager(rootDir);
@@ -61,7 +57,7 @@ export async function buildKnowledgeGraph(rootDir: string): Promise<KnowledgeGra
     const doc: DocumentNode = {
       id: entry.documentId,
       filePath,
-      title: inferTitle(filePath),
+      title: entry.title,
       fileType,
       lastAnalyzed: entry.lastAnalyzed,
       fileHash: entry.fileHash,

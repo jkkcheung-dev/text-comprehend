@@ -1,4 +1,4 @@
-import { readFile, stat, unlink } from "node:fs/promises";
+import { readFile, rm, unlink } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { scanDirectory, type ScannedFile } from "../scanner/index.js";
 import { ManifestManager } from "../manifest/index.js";
@@ -654,6 +654,10 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
           // File may not exist, ignore
         }
       }
+      await rm(join(rootDir, ".text-comprehend", "simplified", entry.documentId), {
+        recursive: true,
+        force: true,
+      });
       delete manifest.files[removedPath];
     }
   }

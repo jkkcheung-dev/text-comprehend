@@ -1,10 +1,44 @@
 import { readFile, writeFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { basename, extname, join } from "node:path";
 import { ManifestSchema, type Manifest } from "../schemas/index.js";
 import type { ScannedFile } from "../scanner/index.js";
 
 const OUTPUT_DIR = ".text-comprehend";
 const MANIFEST_FILE = "manifest.json";
+
+function deriveTitleFromPath(filePath: string): string {
+  return basename(filePath, extname(filePath)).replace(/[-_]/g, " ");
+}
+
+function upgradeLegacyManifestTitles(data: unknown): unknown {
+  if (!data || typeof data !== "object" || !("files" in data)) {
+    return data;
+  }
+
+  const manifest = data as { files?: Record<string, unknown> };
+  if (!manifest.files || typeof manifest.files !== "object") {
+    return data;
+  }
+
+  return {
+    ...manifest,
+    files: Object.fromEntries(
+      Object.entries(manifest.files).map(([filePath, entry]) => {
+        if (!entry || typeof entry !== "object" || "title" in entry) {
+          return [filePath, entry];
+        }
+
+        return [
+          filePath,
+          {
+            ...entry,
+            title: deriveTitleFromPath(filePath),
+          },
+        ];
+      }),
+    ),
+  };
+}
 
 export interface LoadResult {
   manifest: Manifest;
@@ -23,7 +57,8 @@ export class ManifestManager {
   async load(): Promise<LoadResult> {
     try {
       const raw = await readFile(this.manifestPath, "utf-8");
-      return { manifest: ManifestSchema.parse(JSON.parse(raw)), wasCorrupt: false };
+      const parsed = JSON.parse(raw);
+      return { manifest: ManifestSchema.parse(upgradeLegacyManifestTitles(parsed)), wasCorrupt: false };
     } catch (error) {
       // Distinguish between "file doesn't exist" and "file is corrupt"
       const isFileNotFound =

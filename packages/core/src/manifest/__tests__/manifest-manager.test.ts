@@ -32,6 +32,7 @@ describe("ManifestManager", () => {
       files: {
         "doc.md": {
           documentId: "abc123def456",
+          title: "Document Title",
           fileHash: "sha256-abc",
           lastAnalyzed: "2026-03-31T00:00:00.000Z",
           facets: {
@@ -72,6 +73,7 @@ describe("ManifestManager", () => {
       files: {
         "doc.md": {
           documentId: "abc123def456",
+          title: "Document Title",
           fileHash: "oldhash",
           lastAnalyzed: "2026-03-31T00:00:00.000Z",
           facets: {
@@ -99,6 +101,7 @@ describe("ManifestManager", () => {
       files: {
         "doc.md": {
           documentId: "abc123def456",
+          title: "Document Title",
           fileHash: "hash1",
           lastAnalyzed: "2026-03-31T00:00:00.000Z",
           facets: {
@@ -124,6 +127,7 @@ describe("ManifestManager", () => {
       files: {
         "doc.md": {
           documentId: "abc123def456",
+          title: "Document Title",
           fileHash: "hash1",
           lastAnalyzed: "2026-03-31T00:00:00.000Z",
           facets: {
@@ -135,6 +139,7 @@ describe("ManifestManager", () => {
         },
         "deleted.md": {
           documentId: "def456abc789",
+          title: "Deleted Document Title",
           fileHash: "hash2",
           lastAnalyzed: "2026-03-31T00:00:00.000Z",
           facets: {
@@ -179,5 +184,35 @@ describe("ManifestManager", () => {
     const { manifest, wasCorrupt } = await manager.load();
     expect(wasCorrupt).toBe(true);
     expect(manifest.files).toEqual({});
+  });
+
+  it("backfills missing titles when loading a legacy manifest", async () => {
+    await mkdir(join(tempDir, ".text-comprehend"), { recursive: true });
+    await writeFile(
+      join(tempDir, ".text-comprehend", "manifest.json"),
+      JSON.stringify({
+        version: "1.0.0",
+        lastRun: "2026-03-31T00:00:00.000Z",
+        files: {
+          "docs/legacy-file_name.md": {
+            documentId: "legacy-doc",
+            fileHash: "legacy-hash",
+            lastAnalyzed: "2026-03-31T00:00:00.000Z",
+            facets: {
+              summary: { status: "success" },
+              concepts: { status: "pending" },
+              arguments: { status: "pending" },
+              qa: { status: "pending" },
+            },
+          },
+        },
+      }),
+      "utf-8"
+    );
+
+    const { manifest, wasCorrupt } = await manager.load();
+
+    expect(wasCorrupt).toBe(false);
+    expect(manifest.files["docs/legacy-file_name.md"].title).toBe("legacy file name");
   });
 });
