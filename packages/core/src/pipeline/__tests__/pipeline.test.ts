@@ -649,4 +649,65 @@ describe("pipeline", () => {
     expect(prompts).toHaveLength(4);
     expect(prompts.every((prompt) => prompt.includes("target.md"))).toBe(true);
   });
+
+  it("skips review by default", async () => {
+    await createTestFile("doc.md", "# Doc\n\ncontent");
+
+    const result = await runPipeline({ rootDir, agentExecutor: createMockExecutor() });
+
+    expect(result.review.ran).toBe(false);
+    await expect(access(join(rootDir, ".text-comprehend", "review-report.json"))).rejects.toMatchObject({ code: "ENOENT" });
+  });
+
+  it("writes a review report when review mode is enabled", async () => {
+    await createTestFile("doc.md", "# Doc\n\ncontent");
+
+    const result = await runPipeline({
+      rootDir,
+      review: true,
+      agentExecutor: createMockExecutor(),
+    });
+
+    expect(result.review.ran).toBe(true);
+    const reviewRaw = await readFile(join(rootDir, ".text-comprehend", "review-report.json"), "utf-8");
+    expect(JSON.parse(reviewRaw).summary).toBeDefined();
+  });
+
+  it("fails strict review only when error findings exist", async () => {
+    await createTestFile("doc.md", "# Doc\n\ncontent");
+
+    const executor: AgentExecutor = async (prompt) => {
+      if (prompt.includes("summarization specialist")) {
+        const documentId = prompt.match(/Document ID: (\S+)/)?.[1] ?? "unknown";
+        return JSON.stringify({
+          documentId,
+          summary: {
+            thesis: "",
+            overview: "",
+            sections: [
+              {
+                id: "sec-1",
+                heading: "Bad",
+                summary: "Bad",
+                keyPoints: ["x"],
+                sourceRange: { documentId, startLine: 999, endLine: 1000, excerpt: "bad" },
+              },
+            ],
+          },
+        });
+      }
+      return createMockExecutor()(prompt);
+    };
+
+    const result = await runPipeline({
+      rootDir,
+      review: true,
+      reviewStrict: true,
+      agentExecutor: executor,
+    });
+
+    expect(result.review.ran).toBe(true);
+    expect(result.review.strict).toBe(true);
+    expect(result.errors.some((error) => error.includes("Review failed"))).toBe(true);
+  });
 });

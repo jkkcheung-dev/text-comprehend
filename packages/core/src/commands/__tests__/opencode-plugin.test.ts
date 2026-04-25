@@ -16,6 +16,11 @@ function createPipelineResult(overrides: Partial<PipelineResult> = {}): Pipeline
     facetsFailed: 0,
     results: [],
     errors: [],
+    review: {
+      ran: false,
+      strict: false,
+      report: null,
+    },
     ...overrides,
   };
 }
@@ -51,6 +56,47 @@ describe("OpenCode command execution", () => {
     expect(output).toContain("Retry failed facets: yes");
     expect(output).toContain("Documents processed: 2");
     expect(output).toContain("Documents skipped: 3");
+  });
+
+  it("routes /comprehend review flags through the repository workflow", async () => {
+    const runComprehendWorkflow = vi.fn().mockResolvedValue(createPipelineResult({
+      review: {
+        ran: true,
+        strict: true,
+        report: {
+          version: "1.0.0",
+          generatedAt: "2026-04-25T00:00:00.000Z",
+          strict: true,
+          summary: { errors: 1, warnings: 0, passed: false },
+          findings: [],
+        },
+      },
+    }));
+
+    const output = await executeDirectCommand(
+      {
+        command: "comprehend",
+        argumentsText: "--review --review-strict",
+        rootDir: "/repo",
+        agentExecutor: noopExecutor,
+      },
+      {
+        runComprehendWorkflow,
+        resolveSummaryWorkflow: vi.fn(),
+        resolveChatWorkflow: vi.fn(),
+        listAnalyzedDocuments: vi.fn(),
+      },
+    );
+
+    expect(runComprehendWorkflow).toHaveBeenCalledWith({
+      rootDir: "/repo",
+      retryFailed: false,
+      review: true,
+      reviewStrict: true,
+      agentExecutor: noopExecutor,
+    });
+    expect(output).toContain("Review strict mode: yes");
+    expect(output).toContain("Review errors: 1");
   });
 
   it("lists analyzed documents when /comprehend-summary runs without a file argument", async () => {

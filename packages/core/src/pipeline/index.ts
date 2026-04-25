@@ -2,6 +2,7 @@ export type {
   FacetType,
   AgentExecutor,
   PipelineOptions,
+  PipelineReviewResult,
   FacetResult,
   DocumentResult,
   PipelineResult,

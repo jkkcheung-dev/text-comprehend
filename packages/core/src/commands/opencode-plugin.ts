@@ -36,6 +36,10 @@ function parseRetryFailed(argumentsText: string): boolean {
   return argumentsText.split(/\s+/).filter(Boolean).includes("--retry-failed");
 }
 
+function parseFlag(argumentsText: string, flag: string): boolean {
+  return argumentsText.split(/\s+/).filter(Boolean).includes(flag);
+}
+
 function formatPipelineResult(result: PipelineResult, retryFailed: boolean): string {
   const lines = [
     "Repository-backed /comprehend result",
@@ -45,6 +49,12 @@ function formatPipelineResult(result: PipelineResult, retryFailed: boolean): str
     `Facets succeeded: ${result.facetsSucceeded}`,
     `Facets failed: ${result.facetsFailed}`,
   ];
+
+  if (result.review.ran && result.review.report) {
+    lines.push(`Review strict mode: ${result.review.strict ? "yes" : "no"}`);
+    lines.push(`Review errors: ${result.review.report.summary.errors}`);
+    lines.push(`Review warnings: ${result.review.report.summary.warnings}`);
+  }
 
   if (result.errors.length > 0) {
     lines.push("Errors:");
@@ -134,9 +144,13 @@ export async function executeDirectCommand(
   switch (options.command) {
     case "comprehend": {
       const retryFailed = parseRetryFailed(args);
+      const reviewStrict = parseFlag(args, "--review-strict");
+      const review = reviewStrict || parseFlag(args, "--review");
       const result = await dependencies.runComprehendWorkflow({
         rootDir: options.rootDir,
         retryFailed,
+        ...(review ? { review: true } : {}),
+        ...(reviewStrict ? { reviewStrict: true } : {}),
         agentExecutor: options.agentExecutor,
       });
       return formatPipelineResult(result, retryFailed);

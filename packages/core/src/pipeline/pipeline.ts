@@ -2,7 +2,7 @@ import { readFile, rm, unlink } from "node:fs/promises";
 import { basename, extname, join } from "node:path";
 import { scanDirectory, type ScannedFile } from "../scanner/index.js";
 import { ManifestManager } from "../manifest/index.js";
-import type { Manifest, ManifestFileEntry, FacetStatus } from "../schemas/index.js";
+import type { Manifest, ManifestFileEntry, FacetStatus, ReviewReport, SourceRef } from "../schemas/index.js";
 import {
   buildSummarizerPrompt,
   buildConceptExtractorPrompt,
@@ -17,7 +17,7 @@ import {
 } from "../agents/index.js";
 import { saveFacetOutput } from "./facet-persistence.js";
 import { getFacetOutputPath } from "./facet-persistence.js";
-import { buildKnowledgeGraph } from "../graph/index.js";
+import { buildKnowledgeGraph, reviewKnowledgeGraph } from "../graph/index.js";
 import { renderMarkdownOutput } from "../renderer/index.js";
 import type {
   FacetType,
@@ -26,8 +26,8 @@ import type {
   FacetResult,
   DocumentResult,
   PipelineResult,
+  PipelineReviewResult,
 } from "./types.js";
-import type { SourceRef } from "../schemas/index.js";
 
 const ALL_FACETS: FacetType[] = ["summary", "concepts", "arguments", "qa"];
 const DEFAULT_BATCH_SIZE = 5;
@@ -514,11 +514,43 @@ function updateManifestEntries(
   return { facetsSucceeded, facetsFailed };
 }
 
-async function finalizeArtifacts(rootDir: string, errors: string[]): Promise<void> {
+function createPipelineReviewResult(report: ReviewReport | null, strict: boolean): PipelineReviewResult {
+  return {
+    ran: report !== null,
+    strict,
+    report,
+  };
+}
+
+async function finalizeArtifacts(
+  rootDir: string,
+  manifest: Manifest,
+  errors: string[],
+  options: Pick<PipelineOptions, "review" | "reviewStrict">,
+): Promise<PipelineReviewResult> {
+  let reviewReport: ReviewReport | null = null;
+  let graph = null;
+
   try {
-    await buildKnowledgeGraph(rootDir);
+    graph = await buildKnowledgeGraph(rootDir);
   } catch (error) {
     errors.push(`Failed to build knowledge graph: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  if (graph && options.review) {
+    try {
+      reviewReport = await reviewKnowledgeGraph({
+        rootDir,
+        graph,
+        manifestFiles: manifest.files,
+        strict: options.reviewStrict ?? false,
+      });
+      if ((options.reviewStrict ?? false) && reviewReport.summary.errors > 0) {
+        errors.push(`Review failed with ${reviewReport.summary.errors} error finding(s).`);
+      }
+    } catch (error) {
+      errors.push(`Failed to review knowledge graph: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 
   try {
@@ -526,6 +558,8 @@ async function finalizeArtifacts(rootDir: string, errors: string[]): Promise<voi
   } catch (error) {
     errors.push(`Failed to render markdown output: ${error instanceof Error ? error.message : String(error)}`);
   }
+
+  return createPipelineReviewResult(reviewReport, options.reviewStrict ?? false);
 }
 
 export async function runSingleFilePipeline(options: SingleFilePipelineOptions): Promise<PipelineResult> {
@@ -551,7 +585,10 @@ export async function runSingleFilePipeline(options: SingleFilePipelineOptions):
 
   manifest.lastRun = new Date().toISOString();
   await manifestManager.save(manifest);
-  await finalizeArtifacts(rootDir, errors);
+  const review = await finalizeArtifacts(rootDir, manifest, errors, {
+    review: false,
+    reviewStrict: false,
+  });
 
   return {
     documentsProcessed: 1,
@@ -560,11 +597,12 @@ export async function runSingleFilePipeline(options: SingleFilePipelineOptions):
     facetsFailed: counts.facetsFailed,
     results: [result],
     errors,
+    review,
   };
 }
 
 export async function runPipeline(options: PipelineOptions): Promise<PipelineResult> {
-  const { rootDir, batchSize = DEFAULT_BATCH_SIZE, retryFailed = false, agentExecutor } = options;
+  const { rootDir, batchSize = DEFAULT_BATCH_SIZE, retryFailed = false, review = false, reviewStrict = false, agentExecutor } = options;
 
   // 1. Scan
   const scanResult = await scanDirectory(rootDir);
@@ -667,7 +705,10 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
   // 6. Save manifest
   await manifestManager.save(manifest);
 
-  await finalizeArtifacts(rootDir, errors);
+  const reviewResult = await finalizeArtifacts(rootDir, manifest, errors, {
+    review,
+    reviewStrict,
+  });
 
   return {
     documentsProcessed: allResults.length,
@@ -676,5 +717,6 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
     facetsFailed,
     results: allResults,
     errors,
+    review: reviewResult,
   };
 }

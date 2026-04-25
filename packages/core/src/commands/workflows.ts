@@ -8,6 +8,8 @@ import { KnowledgeGraphSchema } from "../schemas/index.js";
 export interface RunComprehendWorkflowOptions {
   rootDir: string;
   retryFailed?: boolean;
+  review?: boolean;
+  reviewStrict?: boolean;
   agentExecutor: AgentExecutor;
 }
 
@@ -148,6 +150,8 @@ export async function runComprehendWorkflow(
   return runPipeline({
     rootDir: options.rootDir,
     retryFailed: options.retryFailed ?? false,
+    review: options.review ?? false,
+    reviewStrict: options.reviewStrict ?? false,
     agentExecutor: options.agentExecutor,
   });
 }

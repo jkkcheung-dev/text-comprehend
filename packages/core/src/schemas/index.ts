@@ -28,3 +28,13 @@ export {
   type ManifestFileEntry,
   type Manifest,
 } from "./manifest.js";
+export {
+  ReviewFindingSeveritySchema,
+  ReviewFindingCodeSchema,
+  ReviewFindingSchema,
+  ReviewReportSchema,
+  type ReviewFindingSeverity,
+  type ReviewFindingCode,
+  type ReviewFinding,
+  type ReviewReport,
+} from "./review-report.js";

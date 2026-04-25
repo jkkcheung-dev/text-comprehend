@@ -196,6 +196,22 @@ describe("command workflows", () => {
     await rm(rootDir, { recursive: true, force: true });
   });
 
+  it("passes review flags through the comprehend workflow", async () => {
+    const rootDir = await mkdtemp(join(tmpdir(), "tc-cmd-"));
+    await writeFile(join(rootDir, "doc.md"), "# Doc\n\ncontent", "utf-8");
+
+    const result = await runComprehendWorkflow({
+      rootDir,
+      review: true,
+      reviewStrict: true,
+      agentExecutor: createMockExecutor(),
+    });
+
+    expect(result.review.ran).toBe(true);
+
+    await rm(rootDir, { recursive: true, force: true });
+  });
+
   it("lists analyzed documents from the knowledge graph", async () => {
     const rootDir = await mkdtemp(join(tmpdir(), "tc-summary-"));
     await writeFile(join(rootDir, "doc.md"), "# Doc\n\ncontent", "utf-8");

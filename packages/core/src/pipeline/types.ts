@@ -1,3 +1,5 @@
+import type { ReviewReport } from "../schemas/index.js";
+
 export type FacetType = "summary" | "concepts" | "arguments" | "qa";
 
 export interface AgentExecutor {
@@ -8,7 +10,15 @@ export interface PipelineOptions {
   rootDir: string;
   batchSize?: number;
   retryFailed?: boolean;
+  review?: boolean;
+  reviewStrict?: boolean;
   agentExecutor: AgentExecutor;
+}
+
+export interface PipelineReviewResult {
+  ran: boolean;
+  strict: boolean;
+  report: ReviewReport | null;
 }
 
 export interface FacetResult {
@@ -33,4 +43,5 @@ export interface PipelineResult {
   facetsFailed: number;
   results: DocumentResult[];
   errors: string[];
+  review: PipelineReviewResult;
 }

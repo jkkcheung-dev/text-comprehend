@@ -9,6 +9,7 @@ import {
   KnowledgeGraphSchema,
   ManifestSchema,
   EdgeSchema,
+  ReviewReportSchema,
 } from "../index.js";
 
 describe("SourceRefSchema", () => {
@@ -310,5 +311,38 @@ describe("ManifestSchema", () => {
         files: {},
       })
     ).toThrow();
+  });
+});
+
+describe("ReviewReportSchema", () => {
+  it("validates a review report with mixed severities", () => {
+    const valid = {
+      version: "1.0.0",
+      generatedAt: "2026-04-25T00:00:00.000Z",
+      strict: true,
+      summary: {
+        errors: 1,
+        warnings: 2,
+        passed: false,
+      },
+      findings: [
+        {
+          severity: "error",
+          code: "INVALID_SOURCE_RANGE",
+          documentId: "doc-1",
+          filePath: "doc.md",
+          message: "Source range exceeds the file length.",
+        },
+        {
+          severity: "warning",
+          code: "LOW_CONFIDENCE_SUMMARY",
+          documentId: "doc-1",
+          filePath: "doc.md",
+          message: "Summary facet succeeded but thesis is blank.",
+        },
+      ],
+    };
+
+    expect(ReviewReportSchema.parse(valid)).toEqual(valid);
   });
 });
