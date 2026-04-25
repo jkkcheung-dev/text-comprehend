@@ -5,9 +5,9 @@ description: Show the layered summary for a specific analyzed document
 Show a summary for the document at path: $ARGUMENTS
 
 Instructions:
-1. If no argument was provided, list all analyzed documents by reading `.text-comprehend/knowledge-graph.json` and showing each document's ID and source path.
-2. If a file path argument was provided:
-   a. Read `.text-comprehend/knowledge-graph.json` and find the document matching the given path
-   b. If found, read and display the layered summary from `.text-comprehend/simplified/<document-id>/`
-   c. If not found but the file exists on disk, run single-file analysis by executing: `npx tsx scripts/test-drive.ts --file <path>` and then display the resulting summary
-   d. If the file does not exist at all, tell the user the file was not found
+1. Execute `npx tsx scripts/command-bridge.ts comprehend-summary $ARGUMENTS`
+2. Follow the repository-backed command bridge output exactly
+3. If no argument was provided, list analyzed documents from `.text-comprehend/knowledge-graph.json`
+4. If a file path was provided and it is already analyzed, read `.text-comprehend/simplified/<document-id>/layered-summary.md`
+5. If the file exists on disk but is not yet analyzed, run the repository-backed single-file analysis path, then read the generated summary
+6. If the file does not exist, report that it was not found

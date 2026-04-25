@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import { mkdtemp, writeFile, rm, mkdir, readFile, unlink, access } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
-import { runPipeline } from "../pipeline.js";
+import { runPipeline, runSingleFilePipeline } from "../pipeline.js";
 import { loadFacetOutput } from "../facet-persistence.js";
 import type { AgentExecutor } from "../types.js";
 
@@ -570,5 +570,47 @@ describe("pipeline", () => {
     expect(result.results[0].facets.arguments.success).toBe(true);
     expect(supportEdge).toBeDefined();
     expect(supportEdge.target).toBe("arg-1-chunk-2");
+  });
+
+  it("processes only the requested file in single-file mode", async () => {
+    await createTestFile("a.md", "# A\n\nalpha");
+    await createTestFile("b.md", "# B\n\nbeta");
+
+    const result = await runSingleFilePipeline({
+      rootDir,
+      relativePath: "b.md",
+      agentExecutor: createMockExecutor(),
+    });
+
+    expect(result.documentsProcessed).toBe(1);
+    expect(result.results).toHaveLength(1);
+    expect(result.results[0].filePath).toBe("b.md");
+
+    const manifestRaw = await readFile(join(rootDir, ".text-comprehend", "manifest.json"), "utf-8");
+    const manifest = JSON.parse(manifestRaw);
+    expect(Object.keys(manifest.files)).toEqual(["b.md"]);
+  });
+
+  it("updates an existing manifest entry without reprocessing other files", async () => {
+    await createTestFile("existing.md", "# Existing\n\nold");
+    await createTestFile("target.md", "# Target\n\ncontent");
+
+    await runPipeline({ rootDir, agentExecutor: createMockExecutor() });
+
+    const prompts: string[] = [];
+    const executor: AgentExecutor = async (prompt) => {
+      prompts.push(prompt);
+      return createMockExecutor()(prompt);
+    };
+
+    const result = await runSingleFilePipeline({
+      rootDir,
+      relativePath: "target.md",
+      agentExecutor: executor,
+    });
+
+    expect(result.documentsProcessed).toBe(1);
+    expect(prompts).toHaveLength(4);
+    expect(prompts.every((prompt) => prompt.includes("target.md"))).toBe(true);
   });
 });

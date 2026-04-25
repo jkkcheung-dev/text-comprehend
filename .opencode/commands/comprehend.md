@@ -5,11 +5,10 @@ description: Scan and analyze all text documents in the project
 Run the full text-comprehend analysis pipeline on this project.
 
 Steps:
-1. Scan the working directory for text files (.md, .txt, .rst, .html), excluding node_modules, .git, and .text-comprehend directories
-2. Run the analysis pipeline by executing: `npx tsx scripts/test-drive.ts $ARGUMENTS`
-3. This will run all 4 specialist agents (summarizer, concept-extractor, argument-mapper, qa-generator) on each document
-4. Build the knowledge graph and save it to `.text-comprehend/knowledge-graph.json`
-5. Generate human-readable markdown output in `.text-comprehend/simplified/`
+1. Execute `npx tsx scripts/command-bridge.ts comprehend $ARGUMENTS`
+2. Follow the repository-backed command bridge output exactly
+3. Use the generated outputs in `.text-comprehend/` as the source of truth for results
+4. Report total files processed, files skipped, any facet failures, and output locations
 
 After completion, report:
 - Total files found and processed
@@ -17,4 +16,4 @@ After completion, report:
 - Any errors encountered
 - Location of output files
 
-The `$ARGUMENTS` are passed to the pipeline. Use `--retry-failed` to retry only previously failed documents.
+The bridge delegates to the repository workflow. Use `--retry-failed` to retry only previously failed facets for unchanged documents.

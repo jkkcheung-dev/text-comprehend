@@ -34,6 +34,12 @@ const DEFAULT_BATCH_SIZE = 5;
 const LARGE_FILE_THRESHOLD = 100 * 1024; // 100KB
 const CHUNK_TARGET_SIZE = 50 * 1024; // ~50KB per chunk
 
+export interface SingleFilePipelineOptions {
+  rootDir: string;
+  relativePath: string;
+  agentExecutor: AgentExecutor;
+}
+
 function joinUniqueSentences(parts: string[]): string {
   const seen = new Set<string>();
   const unique: string[] = [];
@@ -414,6 +420,118 @@ function chunk<T>(arr: T[], size: number): T[][] {
   return chunks;
 }
 
+function countFacetOutcomes(results: DocumentResult[]): { facetsSucceeded: number; facetsFailed: number } {
+  let facetsSucceeded = 0;
+  let facetsFailed = 0;
+
+  for (const docResult of results) {
+    for (const facet of Object.values(docResult.facets)) {
+      if (facet.data === undefined && facet.success) continue;
+      if (facet.success) {
+        facetsSucceeded++;
+      } else {
+        facetsFailed++;
+      }
+    }
+  }
+
+  return { facetsSucceeded, facetsFailed };
+}
+
+function updateManifestEntries(
+  manifest: Manifest,
+  processedEntries: Array<{
+    result: DocumentResult;
+    fileHash: string;
+    processedFacets: FacetType[];
+  }>,
+): { facetsSucceeded: number; facetsFailed: number } {
+  let facetsSucceeded = 0;
+  let facetsFailed = 0;
+
+  for (const { result, fileHash, processedFacets } of processedEntries) {
+    const existingEntry = manifest.files[result.filePath];
+
+    const facetStatuses: Record<string, FacetStatus> = existingEntry
+      ? { ...existingEntry.facets }
+      : {
+          summary: { status: "pending" as const },
+          concepts: { status: "pending" as const },
+          arguments: { status: "pending" as const },
+          qa: { status: "pending" as const },
+        };
+
+    for (const ft of processedFacets) {
+      const facetResult = result.facets[ft];
+      if (facetResult.success) {
+        facetStatuses[ft] = { status: "success" };
+        facetsSucceeded++;
+      } else {
+        facetStatuses[ft] = { status: "failed", error: facetResult.error ?? "Unknown error" };
+        facetsFailed++;
+      }
+    }
+
+    manifest.files[result.filePath] = {
+      documentId: result.documentId,
+      fileHash,
+      lastAnalyzed: new Date().toISOString(),
+      facets: facetStatuses as ManifestFileEntry["facets"],
+    };
+  }
+
+  return { facetsSucceeded, facetsFailed };
+}
+
+async function finalizeArtifacts(rootDir: string, errors: string[]): Promise<void> {
+  try {
+    await buildKnowledgeGraph(rootDir);
+  } catch (error) {
+    errors.push(`Failed to build knowledge graph: ${error instanceof Error ? error.message : String(error)}`);
+  }
+
+  try {
+    await renderMarkdownOutput(rootDir);
+  } catch (error) {
+    errors.push(`Failed to render markdown output: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+export async function runSingleFilePipeline(options: SingleFilePipelineOptions): Promise<PipelineResult> {
+  const { rootDir, relativePath, agentExecutor } = options;
+  const scanResult = await scanDirectory(rootDir);
+  const targetFile = scanResult.files.find((file) => file.relativePath === relativePath);
+
+  if (!targetFile) {
+    throw new Error(`Supported text file not found: ${relativePath}`);
+  }
+
+  const manifestManager = new ManifestManager(rootDir);
+  const { manifest } = await manifestManager.load();
+  const result = await processDocument(targetFile, [...ALL_FACETS], agentExecutor, rootDir);
+  const errors: string[] = [];
+  const counts = updateManifestEntries(manifest, [
+    {
+      result,
+      fileHash: targetFile.fileHash,
+      processedFacets: [...ALL_FACETS],
+    },
+  ]);
+
+  manifest.lastRun = new Date().toISOString();
+  await manifestManager.save(manifest);
+  await finalizeArtifacts(rootDir, errors);
+
+  return {
+    documentsProcessed: 1,
+    documentsSkipped: scanResult.files.length - 1,
+    facetsSucceeded: counts.facetsSucceeded,
+    facetsFailed: counts.facetsFailed,
+    results: [result],
+    errors,
+  };
+}
+
 export async function runPipeline(options: PipelineOptions): Promise<PipelineResult> {
   const { rootDir, batchSize = DEFAULT_BATCH_SIZE, retryFailed = false, agentExecutor } = options;
 
@@ -481,41 +599,14 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
   }
 
   // 5. Update manifest
-  let facetsSucceeded = 0;
-  let facetsFailed = 0;
-
-  for (const docResult of allResults) {
-    const existingEntry = manifest.files[docResult.filePath];
-    const file = fileFacetMap.get(docResult.filePath)!;
-
-    const facetStatuses: Record<string, FacetStatus> = existingEntry
-      ? { ...existingEntry.facets }
-      : {
-          summary: { status: "pending" as const },
-          concepts: { status: "pending" as const },
-          arguments: { status: "pending" as const },
-          qa: { status: "pending" as const },
-        };
-
-    const processedFacets = file.facets;
-    for (const ft of processedFacets) {
-      const facetResult = docResult.facets[ft];
-      if (facetResult.success) {
-        facetStatuses[ft] = { status: "success" };
-        facetsSucceeded++;
-      } else {
-        facetStatuses[ft] = { status: "failed", error: facetResult.error ?? "Unknown error" };
-        facetsFailed++;
-      }
-    }
-
-    manifest.files[docResult.filePath] = {
-      documentId: docResult.documentId,
-      fileHash: file.file.fileHash,
-      lastAnalyzed: new Date().toISOString(),
-      facets: facetStatuses as ManifestFileEntry["facets"],
-    };
-  }
+  const { facetsSucceeded, facetsFailed } = updateManifestEntries(
+    manifest,
+    allResults.map((docResult) => ({
+      result: docResult,
+      fileHash: fileFacetMap.get(docResult.filePath)!.file.fileHash,
+      processedFacets: fileFacetMap.get(docResult.filePath)!.facets,
+    })),
+  );
 
   // 5b. Prune deleted files
   const removedFiles = manifestManager.getRemovedFiles(manifest, scanResult.files);
@@ -541,17 +632,7 @@ export async function runPipeline(options: PipelineOptions): Promise<PipelineRes
   // 6. Save manifest
   await manifestManager.save(manifest);
 
-  try {
-    await buildKnowledgeGraph(rootDir);
-  } catch (error) {
-    errors.push(`Failed to build knowledge graph: ${error instanceof Error ? error.message : String(error)}`);
-  }
-
-  try {
-    await renderMarkdownOutput(rootDir);
-  } catch (error) {
-    errors.push(`Failed to render markdown output: ${error instanceof Error ? error.message : String(error)}`);
-  }
+  await finalizeArtifacts(rootDir, errors);
 
   return {
     documentsProcessed: allResults.length,
