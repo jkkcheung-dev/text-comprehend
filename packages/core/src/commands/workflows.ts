@@ -41,11 +41,6 @@ export type ChatWorkflowResult =
       }>;
     };
 
-export interface CreateCommandPromptOptions {
-  command: "comprehend" | "comprehend-summary" | "comprehend-chat";
-  argumentsText?: string;
-}
-
 async function loadKnowledgeGraph(rootDir: string) {
   const raw = await readFile(join(rootDir, ".text-comprehend", "knowledge-graph.json"), "utf-8");
   return KnowledgeGraphSchema.parse(JSON.parse(raw));
@@ -129,19 +124,6 @@ async function answerChatQuestion(question: string, documents: Array<AnalyzedDoc
   ].join("\n");
 
   return (await agentExecutor(prompt)).trim();
-}
-
-export async function createCommandPrompt(options: CreateCommandPromptOptions): Promise<string> {
-  const args = options.argumentsText?.trim();
-  const commandLine = [`npx tsx scripts/command-bridge.ts`, options.command, args]
-    .filter(Boolean)
-    .join(" ");
-
-  return [
-    `Run the repository-backed command bridge: \`${commandLine}\`.`,
-    "Do not reimplement the command behavior from the markdown file itself.",
-    "Use the command bridge output as the source of truth for this slash command.",
-  ].join("\n");
 }
 
 export async function runComprehendWorkflow(

@@ -10,7 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "build": "tsc -b tsconfig.build.json",
-    "typecheck": "tsc -b tsconfig.build.json --noEmit"
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json && tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p .opencode/tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",

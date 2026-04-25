@@ -1,13 +1,15 @@
-import type { AgentExecutor, PipelineResult } from "../pipeline/index.js";
+import type { AgentExecutor, PipelineResult } from "../../packages/core/src/pipeline/index.js";
 import {
   listAnalyzedDocuments,
   resolveChatWorkflow,
   resolveSummaryWorkflow,
   runComprehendWorkflow,
-} from "./workflows.js";
+} from "../../packages/core/src/commands/workflows.js";
+
+import type { SupportedCommand } from "./types.js";
 
 export interface DirectCommandExecutionOptions {
-  command: "comprehend" | "comprehend-summary" | "comprehend-chat";
+  command: SupportedCommand;
   argumentsText: string;
   rootDir: string;
   agentExecutor: AgentExecutor;
@@ -19,18 +21,6 @@ export interface CommandWorkflowDependencies {
   resolveChatWorkflow: typeof resolveChatWorkflow;
   listAnalyzedDocuments: typeof listAnalyzedDocuments;
 }
-
-export interface SessionPromptClient {
-  session: Record<string, unknown>;
-}
-
-export interface OpencodeCommandHookDependencies {
-  rootDir: string;
-  agentExecutor: AgentExecutor;
-  executeCommand?: typeof executeDirectCommand;
-}
-
-const HANDLED_COMMANDS = new Set(["comprehend", "comprehend-summary", "comprehend-chat"]);
 
 function parseRetryFailed(argumentsText: string): boolean {
   return argumentsText.split(/\s+/).filter(Boolean).includes("--retry-failed");
@@ -179,31 +169,4 @@ export async function executeDirectCommand(
       return formatChatResult(result);
     }
   }
-}
-
-export function createOpencodeCommandHook(dependencies: OpencodeCommandHookDependencies) {
-  const executeCommand = dependencies.executeCommand ?? executeDirectCommand;
-
-  return async (input: {
-    command: string;
-    sessionID: string;
-    arguments: string;
-  }, output: {
-    parts: Array<{ type: "text"; text: string }>;
-  }): Promise<boolean> => {
-    if (!HANDLED_COMMANDS.has(input.command)) {
-      return false;
-    }
-
-    const result = await executeCommand({
-      command: input.command as DirectCommandExecutionOptions["command"],
-      argumentsText: input.arguments,
-      rootDir: dependencies.rootDir,
-      agentExecutor: dependencies.agentExecutor,
-    });
-
-    output.parts = [{ type: "text", text: result }];
-
-    return true;
-  };
 }

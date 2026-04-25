@@ -2,7 +2,7 @@
 
 import {
   createCommandPrompt,
-} from "../packages/core/src/index.ts";
+} from "../src/index.js";
 
 async function main() {
   const [command, ...rest] = process.argv.slice(2);

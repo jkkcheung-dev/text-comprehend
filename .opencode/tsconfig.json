@@ -1,0 +1,8 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "rootDir": "..",
+    "outDir": "../dist-opencode"
+  },
+  "include": ["plugins/**/*.ts", "../src/**/*", "../packages/core/src/**/*"]
+}
