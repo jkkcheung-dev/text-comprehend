@@ -9,7 +9,7 @@ Text Comprehend is an AI agent plugin designed for OpenCode first, with Claude C
 
 **Core problems solved:** comprehension depth (help people actually grasp what they read) and retention/synthesis (help people remember and connect ideas).
 
-**Input:** Text files in the working directory (.md, .txt, .pdf, .rst, .html, .docx).
+**Input:** Text files in the working directory (.md, .txt, .pdf, .rst, .html).
 **Output:** Structured JSON knowledge graph + human-readable markdown summaries + an interactive single-page mind-map UI.
 
 ## Landscape Context
