@@ -14,6 +14,9 @@ import {
 
 function createMockExecutor(): AgentExecutor {
   return async (prompt) => {
+    if (prompt.includes("repository-backed chat answer")) {
+      return "Repository answer based on analyzed artifacts.";
+    }
     if (prompt.includes("summarization specialist")) {
       const documentId = prompt.match(/Document ID: (\S+)/)?.[1] ?? "unknown";
       return JSON.stringify({
@@ -36,6 +39,10 @@ function createMockExecutor(): AgentExecutor {
 
 function createRichExecutor(): AgentExecutor {
   return async (prompt) => {
+    if (prompt.includes("repository-backed chat answer")) {
+      return "Alpha is defined as the Alpha concept in alpha.md.";
+    }
+
     const documentId = prompt.match(/Document ID: (\S+)/)?.[1] ?? "unknown";
     const filePath = prompt.match(/- File: (.+)/)?.[1]?.trim() ?? "unknown.md";
     const title = prompt.match(/- Title: (.+)/)?.[1]?.trim() ?? "unknown";
@@ -267,6 +274,7 @@ describe("command workflows", () => {
     const result = await resolveChatWorkflow({
       rootDir,
       question: "What is this repo about?",
+      agentExecutor: createMockExecutor(),
     });
 
     expect(result.status).toBe("missing-artifacts");
@@ -284,6 +292,7 @@ describe("command workflows", () => {
     const result = await resolveChatWorkflow({
       rootDir,
       question: "What is the Alpha concept definition?",
+      agentExecutor: createRichExecutor(),
     });
 
     expect(result.status).toBe("ready");
@@ -291,6 +300,7 @@ describe("command workflows", () => {
       throw new Error("Expected ready result");
     }
     expect(result.documents.map((doc) => doc.filePath)).toEqual(["alpha.md"]);
+    expect(result.answer).toBe("Alpha is defined as the Alpha concept in alpha.md.");
     expect(result.documents[0].conceptGlossary).toContain("Alpha concept definition for alpha.md");
     expect(result.documents[0].argumentMap).toContain("Alpha main claim");
     expect(result.documents[0].comprehensionCheck).toContain("What is Alpha?");
@@ -308,7 +318,7 @@ describe("command workflows", () => {
     expect(prompt).toContain("Do not reimplement the command behavior from the markdown file itself");
   });
 
-  it("command markdown references the command bridge script", async () => {
+  it("command markdown relies on repository-backed plugin results instead of manual bridge execution", async () => {
     const commandFiles = [
       ".opencode/commands/comprehend.md",
       ".opencode/commands/comprehend-summary.md",
@@ -317,7 +327,8 @@ describe("command workflows", () => {
 
     for (const file of commandFiles) {
       const content = await readFile(join(process.cwd(), file), "utf-8");
-      expect(content).toContain("scripts/command-bridge.ts");
+      expect(content).toContain("repository-backed plugin");
+      expect(content).not.toContain("scripts/command-bridge.ts");
     }
   });
 });

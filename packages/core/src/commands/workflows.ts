@@ -30,6 +30,7 @@ export type ChatWorkflowResult =
   | {
       status: "ready";
       question: string;
+      answer: string;
       documents: Array<AnalyzedDocumentListItem & {
         layeredSummary: string;
         conceptGlossary: string;
@@ -94,6 +95,38 @@ function scoreArtifactMatch(question: string, artifactText: string): number {
   }
 
   return score;
+}
+
+async function answerChatQuestion(question: string, documents: Array<AnalyzedDocumentListItem & {
+  layeredSummary: string;
+  conceptGlossary: string;
+  argumentMap: string;
+  comprehensionCheck: string;
+}>, agentExecutor: AgentExecutor): Promise<string> {
+  const promptSections = documents.map((document) => [
+    `Document: ${document.filePath}`,
+    `Title: ${document.title}`,
+    "Layered summary:",
+    document.layeredSummary,
+    "Concept glossary:",
+    document.conceptGlossary,
+    "Argument map:",
+    document.argumentMap,
+    "Comprehension check:",
+    document.comprehensionCheck,
+  ].join("\n"));
+
+  const prompt = [
+    "You are producing a repository-backed chat answer over analyzed text-comprehend artifacts.",
+    "This is a repository-backed chat answer. Use only the analyzed artifacts below.",
+    `Question: ${question}`,
+    "",
+    ...promptSections,
+    "",
+    "Return a concise plain-text answer. If the artifacts do not answer the question, say so clearly.",
+  ].join("\n");
+
+  return (await agentExecutor(prompt)).trim();
 }
 
 export async function createCommandPrompt(options: CreateCommandPromptOptions): Promise<string> {
@@ -190,6 +223,7 @@ export async function resolveSummaryWorkflow(options: {
 export async function resolveChatWorkflow(options: {
   rootDir: string;
   question: string;
+  agentExecutor: AgentExecutor;
 }): Promise<ChatWorkflowResult> {
   let graph;
   try {
@@ -236,6 +270,7 @@ export async function resolveChatWorkflow(options: {
   return {
     status: "ready",
     question: options.question,
+    answer: await answerChatQuestion(options.question, documents, options.agentExecutor),
     documents,
   };
 }

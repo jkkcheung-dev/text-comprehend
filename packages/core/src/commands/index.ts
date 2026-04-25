@@ -10,3 +10,12 @@ export {
   type RunComprehendWorkflowOptions,
   type SummaryWorkflowResult,
 } from "./workflows.js";
+
+export {
+  createOpencodeCommandHook,
+  executeDirectCommand,
+  type CommandWorkflowDependencies,
+  type DirectCommandExecutionOptions,
+  type OpencodeCommandHookDependencies,
+  type SessionPromptClient,
+} from "./opencode-plugin.js";
