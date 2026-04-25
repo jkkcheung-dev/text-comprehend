@@ -199,7 +199,7 @@ describe("command workflows", () => {
     expect(docs).toEqual([
       expect.objectContaining({
         filePath: "doc.md",
-        title: "doc",
+        title: "Doc",
       }),
     ]);
 
@@ -291,9 +291,9 @@ describe("command workflows", () => {
       throw new Error("Expected ready result");
     }
     expect(result.documents.map((doc) => doc.filePath)).toEqual(["alpha.md"]);
-    expect(result.documents[0].conceptGlossary).toContain("alpha concept definition for alpha.md");
-    expect(result.documents[0].argumentMap).toContain("alpha main claim");
-    expect(result.documents[0].comprehensionCheck).toContain("What is alpha?");
+    expect(result.documents[0].conceptGlossary).toContain("Alpha concept definition for alpha.md");
+    expect(result.documents[0].argumentMap).toContain("Alpha main claim");
+    expect(result.documents[0].comprehensionCheck).toContain("What is Alpha?");
 
     await rm(rootDir, { recursive: true, force: true });
   });
