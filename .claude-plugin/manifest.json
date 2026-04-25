@@ -1,0 +1,18 @@
+{
+  "name": "text-comprehend",
+  "description": "Repository-backed text comprehension commands for projects",
+  "commands": [
+    {
+      "name": "/comprehend",
+      "description": "Run the repository-backed text-comprehend analysis pipeline"
+    },
+    {
+      "name": "/comprehend-summary",
+      "description": "Show the layered summary for a specific analyzed document"
+    },
+    {
+      "name": "/comprehend-chat",
+      "description": "Answer questions using analyzed document artifacts"
+    }
+  ]
+}
