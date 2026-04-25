@@ -22,6 +22,7 @@ export interface FacetResult {
 export interface DocumentResult {
   documentId: string;
   filePath: string;
+  title: string;
   facets: Record<FacetType, FacetResult>;
 }
 

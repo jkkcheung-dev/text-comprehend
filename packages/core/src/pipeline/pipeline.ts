@@ -83,9 +83,38 @@ function dedupeRelationships<T extends { source: string; target: string; type: s
   });
 }
 
-function extractTitle(filePath: string): string {
+function sanitizeFilenameTitle(filePath: string): string {
   const name = basename(filePath, extname(filePath));
   return name.replace(/[-_]/g, " ");
+}
+
+function isUsableTitle(title: string): boolean {
+  return /[\p{L}\p{N}]/u.test(title);
+}
+
+function resolveCanonicalTitle(filePath: string, content: string): string {
+  const lines = content.split("\n");
+
+  for (const line of lines) {
+    const normalized = line.trim();
+    if (!normalized) continue;
+
+    if (/^#{1,6}(?:\s+|$)/.test(normalized)) {
+      const headingTitle = normalized.replace(/^#{1,6}(?:\s+|$)/, "").trim();
+      if (isUsableTitle(headingTitle)) return headingTitle;
+    }
+  }
+
+  for (const line of lines) {
+    const normalized = line.trim();
+    if (!normalized) continue;
+
+    if (!/^#{1,6}(?:\s+|$)/.test(normalized) && isUsableTitle(normalized)) {
+      return normalized;
+    }
+  }
+
+  return sanitizeFilenameTitle(filePath);
 }
 
 interface ContentChunk {
@@ -326,6 +355,7 @@ async function processDocument(
 ): Promise<DocumentResult> {
   const content = await readFile(file.absolutePath, "utf-8");
   const contentSize = Buffer.byteLength(content, "utf-8");
+  const title = resolveCanonicalTitle(file.relativePath, content);
 
   // Large file chunking: split files >100KB into chunks
   if (contentSize > LARGE_FILE_THRESHOLD) {
@@ -336,7 +366,7 @@ async function processDocument(
         const chunkInput: AgentInput = {
           documentId: file.documentId,
           filePath: file.relativePath,
-          title: `${extractTitle(file.relativePath)} (chunk ${i + 1}/${chunks.length})`,
+          title: `${title} (chunk ${i + 1}/${chunks.length})`,
           content: chunks[i].content,
           lineOffset: chunks[i].startLine - 1,
         };
@@ -372,13 +402,13 @@ async function processDocument(
       }
     }
 
-    return { documentId: file.documentId, filePath: file.relativePath, facets: mergedFacets };
+    return { documentId: file.documentId, filePath: file.relativePath, title, facets: mergedFacets };
   }
 
   const agentInput: AgentInput = {
     documentId: file.documentId,
     filePath: file.relativePath,
-    title: extractTitle(file.relativePath),
+    title,
     content,
   };
 
@@ -409,7 +439,7 @@ async function processDocument(
     }
   }
 
-  return { documentId: file.documentId, filePath: file.relativePath, facets };
+  return { documentId: file.documentId, filePath: file.relativePath, title, facets };
 }
 
 function chunk<T>(arr: T[], size: number): T[][] {
@@ -474,6 +504,7 @@ function updateManifestEntries(
 
     manifest.files[result.filePath] = {
       documentId: result.documentId,
+      title: result.title,
       fileHash,
       lastAnalyzed: new Date().toISOString(),
       facets: facetStatuses as ManifestFileEntry["facets"],
