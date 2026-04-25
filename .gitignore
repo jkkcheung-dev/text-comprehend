@@ -2,3 +2,4 @@ node_modules/
 dist/
 *.tsbuildinfo
 .text-comprehend/
+.opencode/skills/ui-ux-pro-max/**
