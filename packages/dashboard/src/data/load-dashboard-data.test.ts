@@ -146,4 +146,66 @@ describe("loadDashboardData", () => {
       path: ".text-comprehend/simplified/doc-1/layered-summary.md",
     });
   });
+
+  it("reports the first document artifact path in graph order when multiple documents fail", async () => {
+    const read = async (path: string) => {
+      if (path === ".text-comprehend/knowledge-graph.json") {
+        return JSON.stringify({
+          version: "1.0.0",
+          generatedAt: "2026-04-28T00:00:00.000Z",
+          documents: [
+            {
+              id: "doc-1",
+              filePath: "docs/doc-1.md",
+              title: "Document One",
+              fileType: "md",
+              lastAnalyzed: "2026-04-28T00:00:00.000Z",
+              fileHash: "hash-doc-1",
+              summary: {
+                thesis: "Thesis",
+                overview: "Overview",
+                sections: [],
+              },
+              concepts: [],
+              arguments: [],
+              questions: [],
+            },
+            {
+              id: "doc-2",
+              filePath: "docs/doc-2.md",
+              title: "Document Two",
+              fileType: "md",
+              lastAnalyzed: "2026-04-28T00:00:00.000Z",
+              fileHash: "hash-doc-2",
+              summary: {
+                thesis: "Thesis",
+                overview: "Overview",
+                sections: [],
+              },
+              concepts: [],
+              arguments: [],
+              questions: [],
+            },
+          ],
+          edges: [],
+        });
+      }
+
+      if (path === ".text-comprehend/simplified/doc-1/layered-summary.md") {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        throw new Error("doc-1 summary is missing on disk");
+      }
+
+      if (path === ".text-comprehend/simplified/doc-2/layered-summary.md") {
+        throw new Error("doc-2 summary is missing on disk");
+      }
+
+      return "placeholder";
+    };
+
+    await expect(loadDashboardData(read)).resolves.toMatchObject({
+      state: "malformed",
+      path: ".text-comprehend/simplified/doc-1/layered-summary.md",
+    });
+  });
 });

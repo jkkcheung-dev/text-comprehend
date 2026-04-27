@@ -61,12 +61,14 @@ export async function loadDashboardData(read: DashboardReader): Promise<Dashboar
   }
 
   try {
-    const documents: DashboardDocument[] = await Promise.all(
-      graph.documents.map(async (document) => ({
+    const documents: DashboardDocument[] = [];
+
+    for (const document of graph.documents) {
+      documents.push({
         ...document,
         simplified: await loadSimplifiedDocument(read, document.id),
-      })),
-    );
+      });
+    }
 
     return {
       state: "ready",
