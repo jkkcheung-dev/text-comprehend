@@ -212,9 +212,11 @@ interface SourceRef {
 When the user runs `/comprehend-explore` inside a supported AI agent:
 
 1. Builds the dashboard (if not already built)
-2. Copies `knowledge-graph.json` + `simplified/` files into the dashboard's public directory
-3. Opens a local dev server (e.g., `http://localhost:5173`)
-4. The React app loads the JSON and renders the graph
+2. Resolves the working directory's canonical `.text-comprehend/` output as the dashboard data source
+3. Opens a local server (e.g., `http://localhost:5173`) with that output location available to the dashboard runtime
+4. The React app loads `knowledge-graph.json` and related simplified outputs from that canonical local analysis directory and renders the graph
+
+The dashboard should treat `.text-comprehend/` in the working directory as the source of truth for analyzed artifacts. It should not require copying or duplicating those artifacts into `packages/dashboard/public/` just to view them.
 
 ### UI Layout
 
@@ -307,6 +309,9 @@ Vitest for all TypeScript tests. Sample test corpus in `tests/fixtures/`.
 ### Dashboard Tests
 - Component tests: React Testing Library for graph rendering, facet toggles, search, detail panel
 - Data loading: graceful handling of missing/malformed JSON files
+
+### Dashboard Fixtures
+- Checked-in fixture outputs under `tests/fixtures/` should mirror real `.text-comprehend/` artifacts so the dashboard can be developed and tested against representative local data without introducing a second dashboard-only data format.
 
 ## Target Platforms
 
