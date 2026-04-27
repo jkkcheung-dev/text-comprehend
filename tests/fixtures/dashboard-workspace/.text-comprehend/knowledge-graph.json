@@ -1,0 +1,101 @@
+{
+  "version": "1.0.0",
+  "generatedAt": "2026-04-28T00:00:00.000Z",
+  "documents": [
+    {
+      "id": "doc-1",
+      "filePath": "docs/doc-1.md",
+      "title": "Document One",
+      "fileType": "md",
+      "lastAnalyzed": "2026-04-28T00:00:00.000Z",
+      "fileHash": "hash-doc-1",
+      "summary": {
+        "thesis": "Representative dashboard fixtures should reflect real comprehension output.",
+        "overview": "A compact document used to load the dashboard in tests.",
+        "sections": [
+          {
+            "id": "sec-1",
+            "heading": "Overview",
+            "summary": "Explains what the fixture is for.",
+            "keyPoints": [
+              "It mirrors generated artifacts.",
+              "It gives the dashboard stable sample data."
+            ],
+            "sourceRange": {
+              "documentId": "doc-1",
+              "startLine": 1,
+              "endLine": 6,
+              "excerpt": "Representative dashboard fixtures"
+            }
+          }
+        ]
+      },
+      "concepts": [
+        {
+          "id": "concept-1",
+          "name": "Dashboard Fixture",
+          "definition": "A checked-in artifact set used to exercise the dashboard loader.",
+          "importance": "core",
+          "sourceRefs": [
+            {
+              "documentId": "doc-1",
+              "startLine": 1,
+              "endLine": 3,
+              "excerpt": "checked-in artifact set"
+            }
+          ]
+        }
+      ],
+      "arguments": [
+        {
+          "id": "argument-1",
+          "claim": "Representative fixtures reduce dashboard integration drift.",
+          "type": "main",
+          "evidence": [
+            {
+              "content": "The loader can parse the same artifact shapes the pipeline emits.",
+              "type": "example",
+              "strength": "strong",
+              "sourceRef": {
+                "documentId": "doc-1",
+                "startLine": 2,
+                "endLine": 5,
+                "excerpt": "loader can parse the same artifact shapes"
+              }
+            }
+          ],
+          "assumptions": [
+            "Fixture data remains aligned with core artifact output."
+          ],
+          "gaps": [],
+          "sourceRefs": [
+            {
+              "documentId": "doc-1",
+              "startLine": 2,
+              "endLine": 5,
+              "excerpt": "Representative fixtures reduce drift"
+            }
+          ]
+        }
+      ],
+      "questions": [
+        {
+          "id": "question-1",
+          "question": "Why keep dashboard fixtures in the repo?",
+          "answer": "They provide a stable input set for loader tests and future UI work.",
+          "difficulty": "basic",
+          "facet": "factual",
+          "sourceRefs": [
+            {
+              "documentId": "doc-1",
+              "startLine": 1,
+              "endLine": 6,
+              "excerpt": "stable input set for loader tests"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "edges": []
+}
