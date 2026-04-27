@@ -9,8 +9,8 @@
   "scripts": {
     "test": "vitest run",
     "test:watch": "vitest",
-    "build": "tsc -b tsconfig.build.json",
-    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json && tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p .opencode/tsconfig.json"
+    "build": "tsc -b tsconfig.build.json && npm run build --workspace @text-comprehend/dashboard",
+    "typecheck": "tsc --noEmit -p tsconfig.typecheck.json && tsc --noEmit -p packages/core/tsconfig.json && tsc --noEmit -p packages/dashboard/tsconfig.json && tsc --noEmit -p .opencode/tsconfig.json"
   },
   "devDependencies": {
     "@types/node": "^25.5.0",
