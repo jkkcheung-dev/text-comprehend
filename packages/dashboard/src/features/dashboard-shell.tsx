@@ -3,28 +3,10 @@ import { DetailPanelShell } from "./detail-panel-shell";
 import { SourceStatusBadge } from "./source-status-badge";
 
 type DashboardShellProps = {
-  data: DashboardData | null;
+  data: DashboardData;
 };
 
 export function DashboardShell({ data }: DashboardShellProps) {
-  if (data === null) {
-    return (
-      <main>
-        <h1>Text Comprehend</h1>
-        <p>Loading dashboard shell...</p>
-        <section>
-          <h2>Documents</h2>
-          <p>Checking dashboard artifacts.</p>
-        </section>
-        <section>
-          <h2>Graph view</h2>
-          <p>Graph view will appear after dashboard data loads.</p>
-        </section>
-        <DetailPanelShell>Document details will appear here once data loads.</DetailPanelShell>
-      </main>
-    );
-  }
-
   if (data.state === "ready") {
     return (
       <main>

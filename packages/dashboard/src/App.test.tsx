@@ -21,6 +21,7 @@ describe("App", () => {
       />,
     );
 
+    expect(screen.queryByText("Loading dashboard shell...")).not.toBeInTheDocument();
     expect(await screen.findByText("Text Comprehend")).toBeInTheDocument();
     expect(screen.getByText("Ready")).toBeInTheDocument();
     expect(screen.getByText("0 documents loaded")).toBeInTheDocument();
@@ -31,6 +32,7 @@ describe("App", () => {
   it("renders the empty shell state when no artifacts exist", async () => {
     render(<App loadData={async () => ({ state: "empty" })} />);
 
+    expect(screen.queryByText("Loading dashboard shell...")).not.toBeInTheDocument();
     expect(await screen.findByText("No dashboard data yet")).toBeInTheDocument();
     expect(screen.getByText("Empty")).toBeInTheDocument();
     expect(screen.getByText("Run /comprehend in your workspace to generate dashboard artifacts.")).toBeInTheDocument();
@@ -49,6 +51,7 @@ describe("App", () => {
       />,
     );
 
+    expect(screen.queryByText("Loading dashboard shell...")).not.toBeInTheDocument();
     expect(await screen.findByText("Dashboard data could not be loaded")).toBeInTheDocument();
     expect(screen.getByText("Error")).toBeInTheDocument();
     expect(screen.getByText(".text-comprehend/knowledge-graph.json")).toBeInTheDocument();
