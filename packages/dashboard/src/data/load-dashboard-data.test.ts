@@ -100,4 +100,50 @@ describe("loadDashboardData", () => {
       path: ".text-comprehend/simplified/doc-1/layered-summary.md",
     });
   });
+
+  it("reports the first simplified artifact path in loader order when multiple reads fail", async () => {
+    const read = async (path: string) => {
+      if (path === ".text-comprehend/knowledge-graph.json") {
+        return JSON.stringify({
+          version: "1.0.0",
+          generatedAt: "2026-04-28T00:00:00.000Z",
+          documents: [
+            {
+              id: "doc-1",
+              filePath: "docs/doc-1.md",
+              title: "Document One",
+              fileType: "md",
+              lastAnalyzed: "2026-04-28T00:00:00.000Z",
+              fileHash: "hash-doc-1",
+              summary: {
+                thesis: "Thesis",
+                overview: "Overview",
+                sections: [],
+              },
+              concepts: [],
+              arguments: [],
+              questions: [],
+            },
+          ],
+          edges: [],
+        });
+      }
+
+      if (path === ".text-comprehend/simplified/doc-1/layered-summary.md") {
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        throw new Error("layered summary is missing on disk");
+      }
+
+      if (path === ".text-comprehend/simplified/doc-1/concept-glossary.md") {
+        throw new Error("glossary is missing on disk");
+      }
+
+      return "placeholder";
+    };
+
+    await expect(loadDashboardData(read)).resolves.toMatchObject({
+      state: "malformed",
+      path: ".text-comprehend/simplified/doc-1/layered-summary.md",
+    });
+  });
 });

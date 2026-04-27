@@ -26,12 +26,10 @@ async function readArtifact(read: DashboardReader, path: string): Promise<string
 async function loadSimplifiedDocument(read: DashboardReader, documentId: string): Promise<DashboardSimplifiedDocument> {
   const basePath = `.text-comprehend/simplified/${documentId}`;
 
-  const [layeredSummary, conceptGlossary, argumentMap, comprehensionCheck] = await Promise.all([
-    readArtifact(read, `${basePath}/layered-summary.md`),
-    readArtifact(read, `${basePath}/concept-glossary.md`),
-    readArtifact(read, `${basePath}/argument-map.md`),
-    readArtifact(read, `${basePath}/comprehension-check.md`),
-  ]);
+  const layeredSummary = await readArtifact(read, `${basePath}/layered-summary.md`);
+  const conceptGlossary = await readArtifact(read, `${basePath}/concept-glossary.md`);
+  const argumentMap = await readArtifact(read, `${basePath}/argument-map.md`);
+  const comprehensionCheck = await readArtifact(read, `${basePath}/comprehension-check.md`);
 
   return {
     layeredSummary,
