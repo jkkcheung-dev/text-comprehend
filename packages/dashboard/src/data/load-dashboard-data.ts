@@ -1,4 +1,4 @@
-import { KnowledgeGraphSchema } from "../../../core/src/schemas/index.js";
+import { KnowledgeGraphSchema } from "@text-comprehend/core";
 import type { DashboardData, DashboardDocument, DashboardReader, DashboardSimplifiedDocument } from "./types";
 
 const GRAPH_PATH = ".text-comprehend/knowledge-graph.json";
@@ -15,14 +15,22 @@ function malformed(path: string, error: unknown): DashboardData {
   };
 }
 
+async function readArtifact(read: DashboardReader, path: string): Promise<string> {
+  try {
+    return await read(path);
+  } catch (error) {
+    throw malformed(path, error);
+  }
+}
+
 async function loadSimplifiedDocument(read: DashboardReader, documentId: string): Promise<DashboardSimplifiedDocument> {
   const basePath = `.text-comprehend/simplified/${documentId}`;
 
   const [layeredSummary, conceptGlossary, argumentMap, comprehensionCheck] = await Promise.all([
-    read(`${basePath}/layered-summary.md`),
-    read(`${basePath}/concept-glossary.md`),
-    read(`${basePath}/argument-map.md`),
-    read(`${basePath}/comprehension-check.md`),
+    readArtifact(read, `${basePath}/layered-summary.md`),
+    readArtifact(read, `${basePath}/concept-glossary.md`),
+    readArtifact(read, `${basePath}/argument-map.md`),
+    readArtifact(read, `${basePath}/comprehension-check.md`),
   ]);
 
   return {
@@ -68,10 +76,10 @@ export async function loadDashboardData(read: DashboardReader): Promise<Dashboar
       documents,
     };
   } catch (error) {
-    const path = error instanceof Error && error.message.includes(".text-comprehend/")
-      ? error.message.slice(error.message.indexOf(".text-comprehend/"))
-      : GRAPH_PATH;
+    if (error && typeof error === "object" && "state" in error && error.state === "malformed") {
+      return error as DashboardData;
+    }
 
-    return malformed(path, error);
+    return malformed(GRAPH_PATH, error);
   }
 }

@@ -1,4 +1,4 @@
-import type { KnowledgeGraph, DocumentNode } from "../../../core/src/schemas/index.js";
+import type { KnowledgeGraph, DocumentNode } from "@text-comprehend/core";
 
 export type DashboardReader = (path: string) => Promise<string>;
 

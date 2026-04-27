@@ -2,5 +2,7 @@ node_modules/
 dist/
 *.tsbuildinfo
 .text-comprehend/
+!tests/fixtures/dashboard-workspace/.text-comprehend/
+!tests/fixtures/dashboard-workspace/.text-comprehend/**
 .worktrees/
 .opencode/skills/ui-ux-pro-max/**
