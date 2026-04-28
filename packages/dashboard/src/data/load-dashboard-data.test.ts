@@ -3,11 +3,11 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { loadDashboardData } from "./load-dashboard-data";
 
-const fixtureRoot = fileURLToPath(new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url));
+const fixtureRootUrl = new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url);
 
 describe("loadDashboardData", () => {
   it("returns the ready dashboard payload when graph and markdown artifacts exist", async () => {
-    const read = (path: string) => readFile(fileURLToPath(new URL(path, `file://${fixtureRoot}/`)), "utf-8");
+    const read = (path: string) => readFile(fileURLToPath(new URL(path, fixtureRootUrl)), "utf-8");
 
     await expect(loadDashboardData(read)).resolves.toMatchObject({
       state: "ready",
