@@ -1,4 +1,4 @@
-import { KnowledgeGraphSchema } from "@text-comprehend/core";
+import { KnowledgeGraphSchema } from "@text-comprehend/core/schemas";
 import type { DashboardData, DashboardDocument, DashboardReader, DashboardSimplifiedDocument } from "./types";
 
 const GRAPH_PATH = ".text-comprehend/knowledge-graph.json";
