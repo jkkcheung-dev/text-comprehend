@@ -1,6 +1,10 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+const dashboardFixtureGraphPath = fileURLToPath(
+  new URL("../../../../tests/fixtures/dashboard-workspace/.text-comprehend/knowledge-graph.json", import.meta.url),
+);
 
 type CapturedMiddleware = (
   request: { url?: string },
@@ -122,10 +126,7 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
     const { default: config } = await import("../../vite.config");
     const plugin = getDashboardFixturesPlugin(config);
     const middleware = captureMiddleware(plugin?.configurePreviewServer);
-    const expected = await readFile(
-      resolve(process.cwd(), "tests/fixtures/dashboard-workspace/.text-comprehend/knowledge-graph.json"),
-      "utf-8",
-    );
+    const expected = await readFile(dashboardFixtureGraphPath, "utf-8");
 
     const result = await runMiddleware(
       middleware,
