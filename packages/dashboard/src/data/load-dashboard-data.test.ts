@@ -1,13 +1,13 @@
 import { readFile } from "node:fs/promises";
-import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { loadDashboardData } from "./load-dashboard-data";
 
-const fixtureRoot = resolve(process.cwd(), "tests/fixtures/dashboard-workspace");
+const fixtureRoot = fileURLToPath(new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url));
 
 describe("loadDashboardData", () => {
   it("returns the ready dashboard payload when graph and markdown artifacts exist", async () => {
-    const read = (path: string) => readFile(resolve(fixtureRoot, path), "utf-8");
+    const read = (path: string) => readFile(fileURLToPath(new URL(path, `file://${fixtureRoot}/`)), "utf-8");
 
     await expect(loadDashboardData(read)).resolves.toMatchObject({
       state: "ready",
