@@ -1,4 +1,68 @@
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
+type CapturedMiddleware = (
+  request: { url?: string },
+  response: {
+    statusCode: number;
+    setHeader: (name: string, value: string) => void;
+    end: (body: string) => void;
+  },
+  next: () => void,
+) => void | Promise<void>;
+
+function getDashboardFixturesPlugin(config: unknown) {
+  const plugins =
+    config && typeof config === "object" && "plugins" in config && Array.isArray(config.plugins) ? config.plugins : [];
+
+  return plugins.find(
+    (plugin): plugin is { name: string; configureServer?: (server: { middlewares: { use: (middleware: CapturedMiddleware) => void } }) => void; configurePreviewServer?: (server: { middlewares: { use: (middleware: CapturedMiddleware) => void } }) => void } =>
+      Boolean(plugin && typeof plugin === "object" && "name" in plugin && plugin.name === "dashboard-fixtures"),
+  );
+}
+
+function captureMiddleware(register: ((server: { middlewares: { use: (middleware: CapturedMiddleware) => void } }) => void) | undefined) {
+  let middleware: CapturedMiddleware | undefined;
+
+  register?.({
+    middlewares: {
+      use(nextMiddleware) {
+        middleware = nextMiddleware;
+      },
+    },
+  });
+
+  if (!middleware) {
+    throw new Error("dashboard fixture middleware was not registered");
+  }
+
+  return middleware;
+}
+
+async function runMiddleware(middleware: CapturedMiddleware, url: string) {
+  let body = "";
+  const headers = new Map<string, string>();
+  let nextCalled = false;
+
+  await middleware(
+    { url },
+    {
+      statusCode: 0,
+      setHeader(name, value) {
+        headers.set(name, value);
+      },
+      end(nextBody) {
+        body = nextBody;
+      },
+    },
+    () => {
+      nextCalled = true;
+    },
+  );
+
+  return { body, headers, nextCalled };
+}
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -42,10 +106,45 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
 
   it("defines a Vite config for serving checked-in fixtures", async () => {
     const { default: config } = await import("../../vite.config");
-    const plugins = "plugins" in config && Array.isArray(config.plugins) ? config.plugins : [];
+    const plugin = getDashboardFixturesPlugin(config);
 
-    expect(plugins).toEqual(
-      expect.arrayContaining([expect.objectContaining({ name: "dashboard-fixtures" })]),
+    expect(plugin).toBeDefined();
+  });
+
+  it("registers the fixture middleware for vite preview", async () => {
+    const { default: config } = await import("../../vite.config");
+    const plugin = getDashboardFixturesPlugin(config);
+
+    expect(plugin?.configurePreviewServer).toEqual(expect.any(Function));
+  });
+
+  it("serves dashboard fixture files from the preview middleware", async () => {
+    const { default: config } = await import("../../vite.config");
+    const plugin = getDashboardFixturesPlugin(config);
+    const middleware = captureMiddleware(plugin?.configurePreviewServer);
+    const expected = await readFile(
+      resolve(process.cwd(), "tests/fixtures/dashboard-workspace/.text-comprehend/knowledge-graph.json"),
+      "utf-8",
     );
+
+    const result = await runMiddleware(
+      middleware,
+      "/__text-comprehend-fixtures__/dashboard-workspace/.text-comprehend/knowledge-graph.json",
+    );
+
+    expect(result.nextCalled).toBe(false);
+    expect(result.body).toBe(expected);
+    expect(result.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+  });
+
+  it("does not expose sibling fixture trees through the dashboard route", async () => {
+    const { default: config } = await import("../../vite.config");
+    const plugin = getDashboardFixturesPlugin(config);
+    const middleware = captureMiddleware(plugin?.configureServer);
+
+    const result = await runMiddleware(middleware, "/__text-comprehend-fixtures__/sample-corpus/doc-1.md");
+
+    expect(result.nextCalled).toBe(false);
+    expect(result.body).toBe("Not Found");
   });
 });
