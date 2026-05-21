@@ -1,64 +1,81 @@
-import type { DashboardData } from "../data/types";
+import type { DashboardData, DashboardDocument } from "../data/types";
 import { DetailPanelShell } from "./detail-panel-shell";
 import { SourceStatusBadge } from "./source-status-badge";
 
 type DashboardShellProps = {
   data: DashboardData;
+  selectedDocumentId: string | null;
+  selectedNodeId: string | null;
+  onSelectDocument: (documentId: string) => void;
 };
 
-export function DashboardShell({ data }: DashboardShellProps) {
-  if (data.state === "ready") {
-    return (
-      <main>
-        <h1>Text Comprehend</h1>
-        <SourceStatusBadge state={data.state} />
-        <section>
-          <h2>Documents</h2>
-          <p>{data.documents.length} documents loaded</p>
-        </section>
-        <section>
-          <h2>Graph view</h2>
-          <p>Graph view available when data is ready.</p>
-        </section>
-        <DetailPanelShell>Select a node to inspect its source context.</DetailPanelShell>
-      </main>
-    );
+function getSelectedDocument(data: DashboardData, selectedDocumentId: string | null): DashboardDocument | null {
+  if (data.state !== "ready") {
+    return null;
   }
 
-  if (data.state === "empty") {
-    return (
-      <main>
-        <h1>Text Comprehend</h1>
-        <SourceStatusBadge state={data.state} />
-        <section>
-          <h2>Documents</h2>
-          <p>No dashboard data yet</p>
-          <p>Run /comprehend in your workspace to generate dashboard artifacts.</p>
-        </section>
-        <section>
-          <h2>Graph view</h2>
-          <p>Graph view will appear after artifacts are available.</p>
-        </section>
-        <DetailPanelShell>Document details will appear here once data loads.</DetailPanelShell>
-      </main>
-    );
-  }
+  return data.documents.find((document) => document.id === selectedDocumentId) ?? data.documents[0] ?? null;
+}
+
+export function DashboardShell({
+  data,
+  selectedDocumentId,
+  selectedNodeId,
+  onSelectDocument,
+}: DashboardShellProps) {
+  const selectedDocument = getSelectedDocument(data, selectedDocumentId);
 
   return (
     <main>
-      <h1>Text Comprehend</h1>
-      <SourceStatusBadge state={data.state} />
+      <header>
+        <h1>Text Comprehend</h1>
+        <div>
+          <p>Search (coming soon)</p>
+        </div>
+        <div>
+          <SourceStatusBadge source={data.source} />
+          <p>{data.source.label}</p>
+        </div>
+      </header>
+
       <section>
-        <h2>Documents</h2>
-        <p>Dashboard data could not be loaded</p>
-        <p>{data.path}</p>
-        <p>{data.error}</p>
+        <aside>
+          <h2>Documents</h2>
+          {data.state === "ready" ? (
+            <ul>
+              {data.documents.map((document) => (
+                <li key={document.id}>
+                  <button type="button" onClick={() => onSelectDocument(document.id)}>
+                    {document.title}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p>Document list unavailable until dashboard data is ready.</p>
+          )}
+          <h2>Facet filters</h2>
+          <p>Facet filters (coming soon)</p>
+          <h2>Source details</h2>
+          <p>{data.source.mode === "fixture" ? data.source.fixtureName : data.source.workspaceRoot}</p>
+        </aside>
+
+        <section>
+          <h2>Graph canvas</h2>
+          {data.state === "loading" ? <p>Loading dashboard data...</p> : null}
+          {data.state === "empty" ? <p>Run /comprehend in your workspace to generate dashboard artifacts.</p> : null}
+          {data.state === "malformed" ? (
+            <>
+              <p>Dashboard data could not be loaded</p>
+              <p>{data.path}</p>
+              <p>{data.error}</p>
+            </>
+          ) : null}
+          {data.state === "ready" ? <p>Graph view available when data is ready.</p> : null}
+        </section>
       </section>
-      <section>
-        <h2>Graph view</h2>
-        <p>Resolve the artifact issue to restore the dashboard shell.</p>
-      </section>
-      <DetailPanelShell>Document details are unavailable until the artifact issue is fixed.</DetailPanelShell>
+
+      <DetailPanelShell document={selectedDocument} selectedNodeId={selectedNodeId} />
     </main>
   );
 }

@@ -1,4 +1,5 @@
-import { readFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -82,12 +83,23 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
     vi.stubGlobal("fetch", fetch);
 
     const { createFixtureSource } = await import("./create-fixture-source");
-    const read = createFixtureSource("dashboard-workspace");
+    const source = createFixtureSource("dashboard-workspace");
 
-    await expect(read(".text-comprehend/knowledge-graph.json")).resolves.toBe("fixture contents");
+    await expect(source.read(".text-comprehend/knowledge-graph.json")).resolves.toBe("fixture contents");
     expect(fetch).toHaveBeenCalledWith(
       "/__text-comprehend-fixtures__/dashboard-workspace/.text-comprehend/knowledge-graph.json",
     );
+  });
+
+  it("returns fixture source metadata", async () => {
+    const { createFixtureSource } = await import("./create-fixture-source");
+    const source = createFixtureSource("dashboard-workspace");
+
+    expect(source.meta).toEqual({
+      mode: "fixture",
+      label: "Fixture: dashboard-workspace",
+      fixtureName: "dashboard-workspace",
+    });
   });
 
   it("surfaces the requested artifact path when a fixture read fails", async () => {
@@ -101,10 +113,33 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
     );
 
     const { createFixtureSource } = await import("./create-fixture-source");
-    const read = createFixtureSource("dashboard-workspace");
+    const source = createFixtureSource("dashboard-workspace");
 
-    await expect(read(".text-comprehend/missing.json")).rejects.toThrow(
+    await expect(source.read(".text-comprehend/missing.json")).rejects.toThrow(
       "ENOENT: .text-comprehend/missing.json",
+    );
+  });
+
+  it("reads workspace artifacts through the workspace route", async () => {
+    const fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      text: async () => "workspace contents",
+    });
+
+    vi.stubGlobal("fetch", fetch);
+
+    const workspaceRoot = fileURLToPath(new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url));
+    const { createWorkspaceSource } = await import("./create-workspace-source");
+    const source = createWorkspaceSource(workspaceRoot);
+
+    await expect(source.read(".text-comprehend/knowledge-graph.json")).resolves.toBe("workspace contents");
+    expect(source.meta).toEqual({
+      mode: "workspace",
+      label: `Workspace: ${workspaceRoot}`,
+      workspaceRoot,
+    });
+    expect(fetch).toHaveBeenCalledWith(
+      `/__text-comprehend-workspace__/${encodeURIComponent(workspaceRoot)}/.text-comprehend/knowledge-graph.json`,
     );
   });
 
@@ -138,6 +173,23 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
     expect(result.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
   });
 
+  it("serves workspace graph files from the preview middleware", async () => {
+    const { default: config } = await import("../../vite.config");
+    const plugin = getDashboardFixturesPlugin(config);
+    const middleware = captureMiddleware(plugin?.configurePreviewServer);
+    const workspaceRoot = fileURLToPath(new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url));
+    const expected = await readFile(dashboardFixtureGraphPath, "utf-8");
+
+    const result = await runMiddleware(
+      middleware,
+      `/__text-comprehend-workspace__/${encodeURIComponent(workspaceRoot)}/.text-comprehend/knowledge-graph.json`,
+    );
+
+    expect(result.nextCalled).toBe(false);
+    expect(result.body).toBe(expected);
+    expect(result.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+  });
+
   it("does not expose sibling fixture trees through the dashboard route", async () => {
     const { default: config } = await import("../../vite.config");
     const plugin = getDashboardFixturesPlugin(config);
@@ -147,5 +199,49 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
 
     expect(result.nextCalled).toBe(false);
     expect(result.body).toBe("Not Found");
+  });
+
+  it("blocks workspace reads outside .text-comprehend", async () => {
+    const { default: config } = await import("../../vite.config");
+    const plugin = getDashboardFixturesPlugin(config);
+    const middleware = captureMiddleware(plugin?.configureServer);
+    const workspaceRoot = fileURLToPath(new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url));
+
+    const result = await runMiddleware(
+      middleware,
+      `/__text-comprehend-workspace__/${encodeURIComponent(workspaceRoot)}/../package.json`,
+    );
+
+    expect(result.nextCalled).toBe(false);
+    expect(result.body).toBe("Not Found");
+  });
+
+  it("blocks workspace symlink escapes outside .text-comprehend", async () => {
+    const workspaceRoot = await mkdtemp(join(process.cwd(), "tmp-dashboard-workspace-"));
+    const artifactsRoot = join(workspaceRoot, ".text-comprehend");
+    const outsideDir = join(workspaceRoot, "outside");
+    const outsideFile = join(outsideDir, "secret.txt");
+    const symlinkPath = join(artifactsRoot, "linked-secret.txt");
+
+    await mkdir(artifactsRoot, { recursive: true });
+    await mkdir(outsideDir, { recursive: true });
+    await writeFile(outsideFile, "secret", "utf-8");
+    await symlink(outsideFile, symlinkPath);
+
+    try {
+      const { default: config } = await import("../../vite.config");
+      const plugin = getDashboardFixturesPlugin(config);
+      const middleware = captureMiddleware(plugin?.configureServer);
+
+      const result = await runMiddleware(
+        middleware,
+        `/__text-comprehend-workspace__/${encodeURIComponent(workspaceRoot)}/.text-comprehend/linked-secret.txt`,
+      );
+
+      expect(result.nextCalled).toBe(false);
+      expect(result.body).toBe("Not Found");
+    } finally {
+      await rm(workspaceRoot, { recursive: true, force: true });
+    }
   });
 });

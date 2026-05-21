@@ -1,9 +1,10 @@
-import { readFile } from "node:fs/promises";
+import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 
 const FIXTURE_ROUTE_PREFIX = "/__text-comprehend-fixtures__/";
+const WORKSPACE_ROUTE_PREFIX = "/__text-comprehend-workspace__/";
 const dashboardFixtureName = "dashboard-workspace";
 const fixtureRoot = resolve(__dirname, "../../tests/fixtures/dashboard-workspace");
 
@@ -25,46 +26,120 @@ type FixtureServer = {
   };
 };
 
-function isWithinFixtureRoot(path: string): boolean {
-  const relativePath = relative(fixtureRoot, path);
+function isWithinRoot(root: string, path: string): boolean {
+  const relativePath = relative(root, path);
   return !relativePath.startsWith("..") && !isAbsolute(relativePath);
 }
 
-function registerFixtureMiddleware(server: FixtureServer) {
+async function handleFixtureRequest(url: string, response: FixtureResponse): Promise<boolean> {
+  if (!url.startsWith(FIXTURE_ROUTE_PREFIX)) {
+    return false;
+  }
+
+  const fixturePath = decodeURIComponent(url.slice(FIXTURE_ROUTE_PREFIX.length));
+
+  if (!fixturePath.startsWith(`${dashboardFixtureName}/`)) {
+    response.statusCode = 404;
+    response.end("Not Found");
+    return true;
+  }
+
+  const relativeFixturePath = fixturePath.slice(dashboardFixtureName.length + 1);
+  const filePath = resolve(fixtureRoot, relativeFixturePath);
+
+  if (!isWithinRoot(fixtureRoot, filePath)) {
+    response.statusCode = 404;
+    response.end("Not Found");
+    return true;
+  }
+
+  try {
+    const content = await readFile(filePath, "utf-8");
+    response.statusCode = 200;
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.end(content);
+  } catch {
+    response.statusCode = 404;
+    response.end("Not Found");
+  }
+
+  return true;
+}
+
+async function handleWorkspaceRequest(url: string, response: FixtureResponse): Promise<boolean> {
+  if (!url.startsWith(WORKSPACE_ROUTE_PREFIX)) {
+    return false;
+  }
+
+  const trimmed = url.slice(WORKSPACE_ROUTE_PREFIX.length);
+  const slashIndex = trimmed.indexOf("/");
+
+  if (slashIndex === -1) {
+    response.statusCode = 404;
+    response.end("Not Found");
+    return true;
+  }
+
+  const workspaceRoot = decodeURIComponent(trimmed.slice(0, slashIndex));
+  const relativeArtifactPath = trimmed.slice(slashIndex + 1);
+  const workspaceArtifactsRoot = resolve(workspaceRoot, ".text-comprehend");
+
+  if (!relativeArtifactPath.startsWith(".text-comprehend/")) {
+    response.statusCode = 404;
+    response.end("Not Found");
+    return true;
+  }
+
+  const filePath = resolve(workspaceRoot, relativeArtifactPath);
+
+  if (!isWithinRoot(workspaceArtifactsRoot, filePath)) {
+    response.statusCode = 404;
+    response.end("Not Found");
+    return true;
+  }
+
+  try {
+    const [realArtifactsRoot, realFilePath] = await Promise.all([
+      realpath(workspaceArtifactsRoot),
+      realpath(filePath),
+    ]);
+
+    if (!isWithinRoot(realArtifactsRoot, realFilePath)) {
+      response.statusCode = 404;
+      response.end("Not Found");
+      return true;
+    }
+
+    const content = await readFile(filePath, "utf-8");
+    response.statusCode = 200;
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.end(content);
+  } catch {
+    response.statusCode = 404;
+    response.end("Not Found");
+  }
+
+  return true;
+}
+
+function registerDashboardMiddleware(server: FixtureServer) {
   server.middlewares.use(async (request, response, next) => {
     const url = request.url;
 
-    if (!url?.startsWith(FIXTURE_ROUTE_PREFIX)) {
+    if (!url) {
       next();
       return;
     }
 
-    const fixturePath = decodeURIComponent(url.slice(FIXTURE_ROUTE_PREFIX.length));
-
-    if (!fixturePath.startsWith(`${dashboardFixtureName}/`)) {
-      response.statusCode = 404;
-      response.end("Not Found");
+    if (await handleFixtureRequest(url, response)) {
       return;
     }
 
-    const relativeFixturePath = fixturePath.slice(dashboardFixtureName.length + 1);
-    const filePath = resolve(fixtureRoot, relativeFixturePath);
-
-    if (!isWithinFixtureRoot(filePath)) {
-      response.statusCode = 404;
-      response.end("Not Found");
+    if (await handleWorkspaceRequest(url, response)) {
       return;
     }
 
-    try {
-      const content = await readFile(filePath, "utf-8");
-      response.statusCode = 200;
-      response.setHeader("Content-Type", "text/plain; charset=utf-8");
-      response.end(content);
-    } catch {
-      response.statusCode = 404;
-      response.end("Not Found");
-    }
+    next();
   });
 }
 
@@ -72,10 +147,10 @@ function dashboardFixtures(): Plugin {
   return {
     name: "dashboard-fixtures",
     configureServer(server) {
-      registerFixtureMiddleware(server);
+      registerDashboardMiddleware(server);
     },
     configurePreviewServer(server) {
-      registerFixtureMiddleware(server);
+      registerDashboardMiddleware(server);
     },
   };
 }

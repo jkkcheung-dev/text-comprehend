@@ -1,15 +1,9 @@
-import type { DashboardData } from "../data/types";
+import type { DashboardSourceMeta } from "../data/types";
 
 type SourceStatusBadgeProps = {
-  state: DashboardData["state"];
+  source: DashboardSourceMeta;
 };
 
-const labels: Record<DashboardData["state"], string> = {
-  ready: "Ready",
-  empty: "Empty",
-  malformed: "Error",
-};
-
-export function SourceStatusBadge({ state }: SourceStatusBadgeProps) {
-  return <p>{labels[state]}</p>;
+export function SourceStatusBadge({ source }: SourceStatusBadgeProps) {
+  return <p>{source.mode === "fixture" ? "Fixture" : "Workspace"}</p>;
 }

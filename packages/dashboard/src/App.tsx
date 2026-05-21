@@ -1,32 +1,49 @@
 import { useEffect, useState } from "react";
-import type { DashboardData } from "./data/types";
+import { loadDashboardData } from "./data/load-dashboard-data";
+import type { DashboardData, DashboardSource } from "./data/types";
 import { DashboardShell } from "./features/dashboard-shell";
 
 type AppProps = {
-  loadData?: () => Promise<DashboardData>;
+  source: DashboardSource;
+  loadData?: (source: DashboardSource) => Promise<DashboardData>;
 };
 
-const emptyDashboardData: DashboardData = { state: "empty" };
+function getSourceKey(source: DashboardSource): string {
+  return source.meta.mode === "fixture"
+    ? `fixture:${source.meta.fixtureName}`
+    : `workspace:${source.meta.workspaceRoot}`;
+}
 
-export function App({ loadData = async () => emptyDashboardData }: AppProps) {
-  const [data, setData] = useState<DashboardData>(emptyDashboardData);
+export function App({ source, loadData = loadDashboardData }: AppProps) {
+  const sourceKey = getSourceKey(source);
+  const loadingData: DashboardData = { state: "loading", source: source.meta };
+  const [data, setData] = useState<DashboardData>({ state: "loading", source: source.meta });
+  const [selectedDocumentId, setSelectedDocumentId] = useState<string | null>(null);
+  const [selectedNodeId] = useState<string | null>(null);
+
+  const visibleData = getSourceKey({ meta: data.source, read: source.read }) === sourceKey
+    ? data
+    : loadingData;
 
   useEffect(() => {
     let cancelled = false;
 
-    void loadData().then(
+    void loadData(source).then(
       (nextData) => {
         if (!cancelled) {
           setData(nextData);
+          setSelectedDocumentId(nextData.state === "ready" ? nextData.documents[0]?.id ?? null : null);
         }
       },
       (error: unknown) => {
         if (!cancelled) {
           setData({
             state: "malformed",
+            source: source.meta,
             path: "dashboard-shell",
             error: error instanceof Error ? error.message : String(error),
           });
+          setSelectedDocumentId(null);
         }
       },
     );
@@ -34,7 +51,14 @@ export function App({ loadData = async () => emptyDashboardData }: AppProps) {
     return () => {
       cancelled = true;
     };
-  }, [loadData]);
+  }, [sourceKey]);
 
-  return <DashboardShell data={data} />;
+  return (
+    <DashboardShell
+      data={visibleData}
+      selectedDocumentId={selectedDocumentId}
+      selectedNodeId={selectedNodeId}
+      onSelectDocument={setSelectedDocumentId}
+    />
+  );
 }
