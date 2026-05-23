@@ -5,6 +5,8 @@ import {
   resolveSummaryWorkflow,
   runComprehendWorkflow,
 } from "../../packages/core/src/commands/workflows.js";
+import { launchDashboardWithDefaults, type DashboardLaunchResult } from "../dashboard/launch-dashboard.js";
+import { formatDashboardLaunchResult } from "../platforms/shared/dashboard-launch-adapter.js";
 
 import type { SupportedCommand } from "./types.js";
 
@@ -20,6 +22,11 @@ export interface CommandWorkflowDependencies {
   resolveSummaryWorkflow: typeof resolveSummaryWorkflow;
   resolveChatWorkflow: typeof resolveChatWorkflow;
   listAnalyzedDocuments: typeof listAnalyzedDocuments;
+  launchExploreDashboard?: (options: { workspaceRoot: string }) => Promise<DashboardLaunchResult>;
+}
+
+async function launchExploreDashboard(options: { workspaceRoot: string }): Promise<DashboardLaunchResult> {
+  return launchDashboardWithDefaults(options);
 }
 
 function parseRetryFailed(argumentsText: string): boolean {
@@ -127,6 +134,7 @@ export async function executeDirectCommand(
     resolveSummaryWorkflow,
     resolveChatWorkflow,
     listAnalyzedDocuments,
+    launchExploreDashboard,
   },
 ): Promise<string> {
   const args = options.argumentsText.trim();
@@ -167,6 +175,13 @@ export async function executeDirectCommand(
         agentExecutor: options.agentExecutor,
       });
       return formatChatResult(result);
+    }
+
+    case "comprehend-explore": {
+      const launch = await (dependencies.launchExploreDashboard ?? launchExploreDashboard)({
+        workspaceRoot: options.rootDir,
+      });
+      return formatDashboardLaunchResult(launch, { status: "unsupported" });
     }
   }
 }

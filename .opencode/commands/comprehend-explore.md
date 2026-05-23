@@ -1,9 +1,20 @@
 ---
-description: Interactive mind-map dashboard (coming soon)
+description: Launch the repository-backed dashboard for analyzed workspace output
 ---
 
-The interactive mind-map dashboard is not yet available. It is planned for a future release.
+Launches the local dashboard against the current workspace's `.text-comprehend` output.
 
-In the meantime, you can use:
-- `/comprehend-chat <question>` to ask questions about your analyzed documents
-- `/comprehend-summary [file-path]` to view summaries of analyzed documents
+Behavior:
+- If analyzed output is missing, the command tells you to run `/comprehend` first.
+- If the dashboard starts successfully, OpenCode tries to open it in your browser first.
+- If browser opening is unsupported or fails, the command returns the local preview URL with manual-open guidance.
+
+Typical flow:
+1. Run `/comprehend` in the workspace you want to inspect.
+2. Run `/comprehend-explore`.
+3. If the browser does not open automatically, use the returned URL to open the dashboard manually.
+
+Related commands:
+- `/comprehend` to generate `.text-comprehend/knowledge-graph.json`
+- `/comprehend-summary [file-path]` to inspect analyzed summaries in text
+- `/comprehend-chat <question>` to ask questions over analyzed documents

@@ -7,8 +7,15 @@ import {
 async function main() {
   const [command, ...rest] = process.argv.slice(2);
 
-  if (command !== "comprehend" && command !== "comprehend-summary" && command !== "comprehend-chat") {
-    console.error("Usage: npx tsx scripts/command-bridge.ts <comprehend|comprehend-summary|comprehend-chat> [arguments]");
+  if (
+    command !== "comprehend"
+    && command !== "comprehend-summary"
+    && command !== "comprehend-chat"
+    && command !== "comprehend-explore"
+  ) {
+    console.error(
+      "Usage: npx tsx scripts/command-bridge.ts <comprehend|comprehend-summary|comprehend-chat|comprehend-explore> [arguments]",
+    );
     process.exit(1);
   }
 
