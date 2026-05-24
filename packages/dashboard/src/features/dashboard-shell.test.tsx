@@ -3,63 +3,38 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { DashboardDocument, MalformedDashboardData, ReadyDashboardData } from "../data/types";
+import {
+  createAvailableDetail,
+  createDocument,
+  createMalformedDashboardData,
+  createReadyDashboardData,
+  createWorkspaceSource,
+} from "../test/factories";
 import { DashboardShell } from "./dashboard-shell";
 
 afterEach(() => {
   cleanup();
 });
 
-function createDocument(id: string, title: string): DashboardDocument {
-  return {
-    id,
-    filePath: `docs/${id}.md`,
-    title,
-    fileType: "md",
-    lastAnalyzed: "2026-04-28T00:00:00.000Z",
-    fileHash: `hash-${id}`,
-    summary: { thesis: "Thesis", overview: "Overview", sections: [] },
-    concepts: [],
-    arguments: [],
-    questions: [],
-    detail: {
-      state: "available",
-      simplified: {
-        layeredSummary: `# ${title}`,
-        conceptGlossary: "# Glossary",
-        argumentMap: "# Argument Map",
-        comprehensionCheck: "# Questions",
-      },
-    },
-  };
-}
+const defaultShellProps = {
+  selectedDocumentId: null,
+  selectedNodeId: null,
+  onSelectDocument: () => {},
+};
 
 describe("DashboardShell", () => {
   it("renders refresh and retry controls for ready data warnings", () => {
     const onRefresh = vi.fn();
     const onRetry = vi.fn();
-    const readyData: ReadyDashboardData = {
-      state: "ready",
-      source: {
-        mode: "workspace",
-        label: "Workspace: /repo",
-        workspaceRoot: "/repo",
-      },
-      graph: {
-        version: "1.0.0",
-        generatedAt: "2026-04-28T00:00:00.000Z",
-        documents: [],
-        edges: [],
-      },
-      documents: [createDocument("doc-1", "Document One")],
-    };
+    const readyData = createReadyDashboardData({
+      source: createWorkspaceSource("/repo").meta,
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
 
     render(
       <DashboardShell
         data={readyData}
-        selectedDocumentId={null}
-        selectedNodeId={null}
-        onSelectDocument={() => {}}
+        {...defaultShellProps}
         onRefresh={onRefresh}
         refreshWarning="Dashboard data may be stale."
         onRetry={onRetry}
@@ -75,25 +50,26 @@ describe("DashboardShell", () => {
     expect(onRetry).toHaveBeenCalledTimes(1);
   });
 
+  it("suppresses the ready-only refresh control when dashboard data is not ready", () => {
+    render(
+      <DashboardShell
+        data={createMalformedDashboardData()}
+        {...defaultShellProps}
+        onRefresh={vi.fn()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Refresh data" })).not.toBeInTheDocument();
+  });
+
   it("renders warning and retry controls when data is not ready", () => {
     const onRetry = vi.fn();
-    const malformedData: MalformedDashboardData = {
-      state: "malformed",
-      source: {
-        mode: "fixture",
-        label: "Fixture: dashboard-workspace",
-        fixtureName: "dashboard-workspace",
-      },
-      path: ".text-comprehend/dashboard.json",
-      error: "Unexpected token",
-    };
+    const malformedData = createMalformedDashboardData();
 
     render(
       <DashboardShell
         data={malformedData}
-        selectedDocumentId={null}
-        selectedNodeId={null}
-        onSelectDocument={() => {}}
+        {...defaultShellProps}
         refreshWarning="Dashboard data may be stale."
         onRetry={onRetry}
       />,

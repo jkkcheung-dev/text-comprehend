@@ -3,41 +3,24 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import type { DashboardData, DashboardDocument, DashboardSource } from "./data/types";
+import type { DashboardData, DashboardSource } from "./data/types";
 import { App } from "./App";
+import {
+  createAvailableDetail,
+  createDocument,
+  createDegradedDetail,
+  createEmptyDashboardData,
+  createFixtureSource,
+  createMalformedDashboardData,
+  createReadyDashboardData,
+  createWorkspaceSource,
+} from "./test/factories";
 
-const fixtureSource: DashboardSource = {
-  meta: {
-    mode: "fixture",
-    label: "Fixture: dashboard-workspace",
-    fixtureName: "dashboard-workspace",
-  },
-  read: async () => "",
-};
+const fixtureSource: DashboardSource = createFixtureSource();
 
 afterEach(() => {
   cleanup();
 });
-
-function createDocument(
-  id: string,
-  title: string,
-  detail: DashboardDocument["detail"],
-): DashboardDocument {
-  return {
-    id,
-    filePath: `docs/${id}.md`,
-    title,
-    fileType: "md",
-    lastAnalyzed: "2026-04-28T00:00:00.000Z",
-    fileHash: `hash-${id}`,
-    summary: { thesis: "Thesis", overview: "Overview", sections: [] },
-    concepts: [],
-    arguments: [],
-    questions: [],
-    detail,
-  };
-}
 
 describe("App", () => {
   it("renders the loading shell before async data resolves", () => {
@@ -51,39 +34,13 @@ describe("App", () => {
   it("renders the Option A shell and source details when ready", async () => {
     render(
       <App
-        source={{
-          meta: {
-            mode: "workspace",
-            label: "Workspace: /repo",
-            workspaceRoot: "/repo",
-          },
-          read: async () => "",
-        }}
-        loadData={async () => ({
-          state: "ready",
-          source: {
-            mode: "workspace",
-            label: "Workspace: /repo",
-            workspaceRoot: "/repo",
-          },
-          graph: {
-            version: "1.0.0",
-            generatedAt: "2026-04-28T00:00:00.000Z",
-            documents: [],
-            edges: [],
-          },
-          documents: [
-            createDocument("doc-1", "Document One", {
-              state: "available",
-              simplified: {
-                layeredSummary: "# Document One",
-                conceptGlossary: "# Glossary",
-                argumentMap: "# Argument Map",
-                comprehensionCheck: "# Questions",
-              },
-            }),
-          ],
-        })}
+        source={createWorkspaceSource("/repo")}
+        loadData={async () =>
+          createReadyDashboardData({
+            source: createWorkspaceSource("/repo").meta,
+            documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+          })
+        }
       />,
     );
 
@@ -101,32 +58,22 @@ describe("App", () => {
     render(
       <App
         source={fixtureSource}
-        loadData={async () => ({
-          state: "ready",
-          source: fixtureSource.meta,
-          graph: {
-            version: "1.0.0",
-            generatedAt: "2026-04-28T00:00:00.000Z",
-            documents: [],
-            edges: [],
-          },
-          documents: [
-            createDocument("doc-1", "Document One", {
-              state: "available",
-              simplified: {
-                layeredSummary: "# Document One",
-                conceptGlossary: "# Glossary One",
-                argumentMap: "# Argument One",
-                comprehensionCheck: "# Questions One",
-              },
-            }),
-            createDocument("doc-2", "Document Two", {
-              state: "degraded",
-              path: ".text-comprehend/simplified/doc-2/layered-summary.md",
-              error: "ENOENT: missing file",
-            }),
-          ],
-        })}
+        loadData={async () =>
+          createReadyDashboardData({
+            source: fixtureSource.meta,
+            documents: [
+              createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
+              createDocument(
+                "doc-2",
+                "Document Two",
+                createDegradedDetail(
+                  ".text-comprehend/simplified/doc-2/layered-summary.md",
+                  "ENOENT: missing file",
+                ),
+              ),
+            ],
+          })
+        }
       />,
     );
 
@@ -141,12 +88,7 @@ describe("App", () => {
     render(
       <App
         source={fixtureSource}
-        loadData={async () => ({
-          state: "malformed",
-          source: fixtureSource.meta,
-          path: ".text-comprehend/knowledge-graph.json",
-          error: "Unexpected token",
-        })}
+        loadData={async () => createMalformedDashboardData(fixtureSource.meta)}
       />,
     );
 
@@ -156,37 +98,15 @@ describe("App", () => {
   });
 
   it("preserves the last ready view and shows a warning when a manual refresh returns malformed data", async () => {
-    const readyData: DashboardData = {
-      state: "ready",
+    const readyData: DashboardData = createReadyDashboardData({
       source: fixtureSource.meta,
-      graph: {
-        version: "1.0.0",
-        generatedAt: "2026-04-28T00:00:00.000Z",
-        documents: [],
-        edges: [],
-      },
-      documents: [
-        createDocument("doc-1", "Document One", {
-          state: "available",
-          simplified: {
-            layeredSummary: "# Document One",
-            conceptGlossary: "# Glossary One",
-            argumentMap: "# Argument One",
-            comprehensionCheck: "# Questions One",
-          },
-        }),
-      ],
-    };
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
 
     const loadData = vi
       .fn<(source: DashboardSource) => Promise<DashboardData>>()
       .mockResolvedValueOnce(readyData)
-      .mockResolvedValueOnce({
-        state: "malformed",
-        source: fixtureSource.meta,
-        path: ".text-comprehend/knowledge-graph.json",
-        error: "Unexpected token",
-      });
+      .mockResolvedValueOnce(createMalformedDashboardData(fixtureSource.meta));
 
     render(<App source={fixtureSource} loadData={loadData} />);
 
@@ -200,52 +120,20 @@ describe("App", () => {
   });
 
   it("retries the same source and clears the warning after a successful reload", async () => {
-    const readyData: DashboardData = {
-      state: "ready",
+    const readyData: DashboardData = createReadyDashboardData({
       source: fixtureSource.meta,
-      graph: {
-        version: "1.0.0",
-        generatedAt: "2026-04-28T00:00:00.000Z",
-        documents: [],
-        edges: [],
-      },
-      documents: [
-        createDocument("doc-1", "Document One", {
-          state: "available",
-          simplified: {
-            layeredSummary: "# Document One",
-            conceptGlossary: "# Glossary One",
-            argumentMap: "# Argument One",
-            comprehensionCheck: "# Questions One",
-          },
-        }),
-      ],
-    };
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
 
-    const refreshedReadyData: DashboardData = {
-      ...readyData,
-      documents: [
-        createDocument("doc-1", "Document One", {
-          state: "available",
-          simplified: {
-            layeredSummary: "# Document One v2",
-            conceptGlossary: "# Glossary One",
-            argumentMap: "# Argument One",
-            comprehensionCheck: "# Questions One",
-          },
-        }),
-      ],
-    };
+    const refreshedReadyData: DashboardData = createReadyDashboardData({
+      source: fixtureSource.meta,
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One v2"))],
+    });
 
     const loadData = vi
       .fn<(source: DashboardSource) => Promise<DashboardData>>()
       .mockResolvedValueOnce(readyData)
-      .mockResolvedValueOnce({
-        state: "malformed",
-        source: fixtureSource.meta,
-        path: ".text-comprehend/knowledge-graph.json",
-        error: "Unexpected token",
-      })
+      .mockResolvedValueOnce(createMalformedDashboardData(fixtureSource.meta))
       .mockResolvedValueOnce(refreshedReadyData);
 
     render(<App source={fixtureSource} loadData={loadData} />);
@@ -263,35 +151,15 @@ describe("App", () => {
   });
 
   it("shows the empty state when a refresh returns empty data", async () => {
-    const readyData: DashboardData = {
-      state: "ready",
+    const readyData: DashboardData = createReadyDashboardData({
       source: fixtureSource.meta,
-      graph: {
-        version: "1.0.0",
-        generatedAt: "2026-04-28T00:00:00.000Z",
-        documents: [],
-        edges: [],
-      },
-      documents: [
-        createDocument("doc-1", "Document One", {
-          state: "available",
-          simplified: {
-            layeredSummary: "# Document One",
-            conceptGlossary: "# Glossary One",
-            argumentMap: "# Argument One",
-            comprehensionCheck: "# Questions One",
-          },
-        }),
-      ],
-    };
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
 
     const loadData = vi
       .fn<(source: DashboardSource) => Promise<DashboardData>>()
       .mockResolvedValueOnce(readyData)
-      .mockResolvedValueOnce({
-        state: "empty",
-        source: fixtureSource.meta,
-      });
+      .mockResolvedValueOnce(createEmptyDashboardData(fixtureSource.meta));
 
     render(<App source={fixtureSource} loadData={loadData} />);
 
@@ -307,38 +175,14 @@ describe("App", () => {
   });
 
   it("shows loading immediately when the source changes", async () => {
-    const nextSource: DashboardSource = {
-      meta: {
-        mode: "workspace",
-        label: "Workspace: /repo",
-        workspaceRoot: "/repo",
-      },
-      read: async () => "",
-    };
+    const nextSource: DashboardSource = createWorkspaceSource("/repo");
 
     const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) => {
       if (source.meta.mode === "fixture") {
-        return {
-          state: "ready" as const,
+        return createReadyDashboardData({
           source: source.meta,
-          graph: {
-            version: "1.0.0",
-            generatedAt: "2026-04-28T00:00:00.000Z",
-            documents: [],
-            edges: [],
-          },
-          documents: [
-            createDocument("doc-1", "Document One", {
-              state: "available",
-              simplified: {
-                layeredSummary: "# Document One",
-                conceptGlossary: "# Glossary One",
-                argumentMap: "# Argument One",
-                comprehensionCheck: "# Questions One",
-              },
-            }),
-          ],
-        };
+          documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+        });
       }
 
       return new Promise(() => {});
@@ -356,47 +200,18 @@ describe("App", () => {
   });
 
   it("drops the stale snapshot immediately when the source key changes", async () => {
-    const workspaceSource: DashboardSource = {
-      meta: {
-        mode: "workspace",
-        label: "Workspace: /repo",
-        workspaceRoot: "/repo",
-      },
-      read: async () => "",
-    };
+    const workspaceSource: DashboardSource = createWorkspaceSource("/repo");
 
     const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) => {
       if (source.meta.mode === "fixture") {
         if (loadData.mock.calls.length === 1) {
-          return {
-            state: "ready",
+          return createReadyDashboardData({
             source: fixtureSource.meta,
-            graph: {
-              version: "1.0.0",
-              generatedAt: "2026-04-28T00:00:00.000Z",
-              documents: [],
-              edges: [],
-            },
-            documents: [
-              createDocument("doc-1", "Document One", {
-                state: "available",
-                simplified: {
-                  layeredSummary: "# Document One",
-                  conceptGlossary: "# Glossary One",
-                  argumentMap: "# Argument One",
-                  comprehensionCheck: "# Questions One",
-                },
-              }),
-            ],
-          };
+            documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+          });
         }
 
-        return {
-          state: "malformed",
-          source: fixtureSource.meta,
-          path: ".text-comprehend/knowledge-graph.json",
-          error: "Unexpected token",
-        };
+        return createMalformedDashboardData(fixtureSource.meta);
       }
 
       return new Promise(() => {});
@@ -419,34 +234,13 @@ describe("App", () => {
 
   it("does not reload or lose selection when the same logical source is recreated", async () => {
     const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) => ({
-      state: "ready" as const,
-      source: source.meta,
-      graph: {
-        version: "1.0.0",
-        generatedAt: "2026-04-28T00:00:00.000Z",
-        documents: [],
-        edges: [],
-      },
-      documents: [
-        createDocument("doc-1", "Document One", {
-          state: "available",
-          simplified: {
-            layeredSummary: "# Document One",
-            conceptGlossary: "# Glossary One",
-            argumentMap: "# Argument One",
-            comprehensionCheck: "# Questions One",
-          },
-        }),
-        createDocument("doc-2", "Document Two", {
-          state: "available",
-          simplified: {
-            layeredSummary: "# Document Two",
-            conceptGlossary: "# Glossary Two",
-            argumentMap: "# Argument Two",
-            comprehensionCheck: "# Questions Two",
-          },
-        }),
-      ],
+      ...createReadyDashboardData({
+        source: source.meta,
+        documents: [
+          createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
+          createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
+        ],
+      }),
     }));
 
     const view = render(<App source={fixtureSource} loadData={loadData} />);
@@ -457,10 +251,7 @@ describe("App", () => {
 
     view.rerender(
       <App
-        source={{
-          meta: fixtureSource.meta,
-          read: async () => "",
-        }}
+        source={createFixtureSource()}
         loadData={async (source) => loadData(source)}
       />,
     );
