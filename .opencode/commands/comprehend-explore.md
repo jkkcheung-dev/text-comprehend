@@ -8,6 +8,7 @@ Behavior:
 - If analyzed output is missing, the command tells you to run `/comprehend` first.
 - If the dashboard starts successfully, OpenCode tries to open it in your browser first.
 - If browser opening is unsupported or fails, the command returns the local preview URL with manual-open guidance.
+- If dashboard startup fails, the command returns `Failed to launch the dashboard. Try again.` instead of raw internal diagnostics.
 
 Typical flow:
 1. Run `/comprehend` in the workspace you want to inspect.

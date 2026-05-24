@@ -1,4 +1,4 @@
-import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, realpath, rm, symlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, describe, expect, it, vi } from "vitest";
@@ -71,6 +71,7 @@ async function runMiddleware(middleware: CapturedMiddleware, url: string) {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 describe("fixture-backed dashboard bootstrap wiring", () => {
@@ -157,6 +158,14 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
     expect(plugin?.configurePreviewServer).toEqual(expect.any(Function));
   });
 
+  it("does not alias core package imports to dashboard source paths", async () => {
+    const { default: config } = await import("../../vite.config");
+
+    expect(config.resolve?.alias).not.toMatchObject({
+      "@text-comprehend/core/schemas": expect.any(String),
+    });
+  });
+
   it("serves dashboard fixture files from the preview middleware", async () => {
     const { default: config } = await import("../../vite.config");
     const plugin = getDashboardFixturesPlugin(config);
@@ -188,6 +197,65 @@ describe("fixture-backed dashboard bootstrap wiring", () => {
     expect(result.nextCalled).toBe(false);
     expect(result.body).toBe(expected);
     expect(result.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+  });
+
+  it("reports launched preview health and enforces the configured workspace root", async () => {
+    const workspaceRoot = fileURLToPath(new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url));
+    const canonicalWorkspaceRoot = await realpath(workspaceRoot);
+
+    vi.stubEnv("TEXT_COMPREHEND_DASHBOARD_WORKSPACE_ROOT", workspaceRoot);
+
+    const { default: config } = await import("../../vite.config");
+    const plugin = getDashboardFixturesPlugin(config);
+    const middleware = captureMiddleware(plugin?.configurePreviewServer);
+
+    const healthResult = await runMiddleware(middleware, "/__text-comprehend-health__");
+    const allowedResult = await runMiddleware(
+      middleware,
+      `/__text-comprehend-workspace__/${encodeURIComponent(workspaceRoot)}/.text-comprehend/knowledge-graph.json`,
+    );
+    const rejectedResult = await runMiddleware(
+      middleware,
+      "/__text-comprehend-workspace__/%2Fanother-workspace/.text-comprehend/knowledge-graph.json",
+    );
+
+    expect(healthResult.nextCalled).toBe(false);
+    expect(healthResult.headers.get("Content-Type")).toBe("application/json; charset=utf-8");
+    expect(JSON.parse(healthResult.body)).toEqual({
+      status: "ready",
+      workspaceRoot: canonicalWorkspaceRoot,
+    });
+
+    expect(allowedResult.nextCalled).toBe(false);
+    expect(allowedResult.body).not.toBe("Not Found");
+
+    expect(rejectedResult.nextCalled).toBe(false);
+    expect(rejectedResult.body).toBe("Not Found");
+  });
+
+  it("treats canonical-equivalent configured workspace roots as the same workspace identity", async () => {
+    const workspaceRoot = fileURLToPath(new URL("../../../../tests/fixtures/dashboard-workspace/", import.meta.url));
+    const canonicalWorkspaceRoot = await realpath(workspaceRoot);
+    const aliasWorkspaceRoot = `${workspaceRoot.replace(/\/$/, "")}/../dashboard-workspace/`;
+
+    vi.stubEnv("TEXT_COMPREHEND_DASHBOARD_WORKSPACE_ROOT", aliasWorkspaceRoot);
+
+    const { default: config } = await import("../../vite.config");
+    const plugin = getDashboardFixturesPlugin(config);
+    const middleware = captureMiddleware(plugin?.configurePreviewServer);
+
+    const healthResult = await runMiddleware(middleware, "/__text-comprehend-health__");
+    const allowedResult = await runMiddleware(
+      middleware,
+      `/__text-comprehend-workspace__/${encodeURIComponent(workspaceRoot)}/.text-comprehend/knowledge-graph.json`,
+    );
+
+    expect(JSON.parse(healthResult.body)).toEqual({
+      status: "ready",
+      workspaceRoot: canonicalWorkspaceRoot,
+    });
+    expect(allowedResult.nextCalled).toBe(false);
+    expect(allowedResult.body).not.toBe("Not Found");
   });
 
   it("does not expose sibling fixture trees through the dashboard route", async () => {

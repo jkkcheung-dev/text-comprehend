@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "prebuild": "npm run build --workspace @text-comprehend/core",
     "build": "vite build",
+    "pretypecheck": "npm run build --workspace @text-comprehend/core",
     "preview": "vite preview",
     "preview:host": "vite preview --host 127.0.0.1",
     "test": "vitest run src",

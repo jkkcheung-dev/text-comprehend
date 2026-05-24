@@ -6,7 +6,7 @@ import {
   runComprehendWorkflow,
 } from "../../packages/core/src/commands/workflows.js";
 import { launchDashboardWithDefaults, type DashboardLaunchResult } from "../dashboard/launch-dashboard.js";
-import { formatDashboardLaunchResult } from "../platforms/shared/dashboard-launch-adapter.js";
+import type { DashboardLaunchCommandResult } from "../platforms/shared/dashboard-launch-adapter.js";
 
 import type { SupportedCommand } from "./types.js";
 
@@ -136,7 +136,7 @@ export async function executeDirectCommand(
     listAnalyzedDocuments,
     launchExploreDashboard,
   },
-): Promise<string> {
+): Promise<string | DashboardLaunchCommandResult> {
   const args = options.argumentsText.trim();
 
   switch (options.command) {
@@ -181,7 +181,10 @@ export async function executeDirectCommand(
       const launch = await (dependencies.launchExploreDashboard ?? launchExploreDashboard)({
         workspaceRoot: options.rootDir,
       });
-      return formatDashboardLaunchResult(launch, { status: "unsupported" });
+      return {
+        launch,
+        browserOpen: { status: "unsupported" },
+      };
     }
   }
 }

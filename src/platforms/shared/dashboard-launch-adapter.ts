@@ -13,14 +13,21 @@ export type BrowserOpenStatus =
       detail?: string;
     };
 
+export interface DashboardLaunchCommandResult {
+  launch: DashboardLaunchResult;
+  browserOpen: BrowserOpenStatus;
+}
+
+export function formatDashboardLaunchCommandResult(result: DashboardLaunchCommandResult): string {
+  return formatDashboardLaunchResult(result.launch, result.browserOpen);
+}
+
 export function formatDashboardLaunchResult(
   launch: DashboardLaunchResult,
   browserOpen: BrowserOpenStatus,
 ): string {
   if (launch.status !== "ready") {
-    return launch.status === "launch-failed" && launch.detail
-      ? `${launch.message}\n${launch.detail}`
-      : launch.message;
+    return launch.message;
   }
 
   if (browserOpen.status === "opened") {

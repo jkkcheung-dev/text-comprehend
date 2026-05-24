@@ -5,8 +5,25 @@ import { defineConfig, type Plugin } from "vite";
 
 const FIXTURE_ROUTE_PREFIX = "/__text-comprehend-fixtures__/";
 const WORKSPACE_ROUTE_PREFIX = "/__text-comprehend-workspace__/";
+const HEALTH_ROUTE = "/__text-comprehend-health__";
 const dashboardFixtureName = "dashboard-workspace";
 const fixtureRoot = resolve(__dirname, "../../tests/fixtures/dashboard-workspace");
+
+function getConfiguredWorkspaceRoot(): string | null {
+  return process.env.TEXT_COMPREHEND_DASHBOARD_WORKSPACE_ROOT ?? null;
+}
+
+async function canonicalizeWorkspaceRoot(workspaceRoot: string | null): Promise<string | null> {
+  if (!workspaceRoot) {
+    return null;
+  }
+
+  try {
+    return await realpath(workspaceRoot);
+  } catch {
+    return resolve(workspaceRoot);
+  }
+}
 
 type FixtureRequest = {
   url?: string;
@@ -80,8 +97,20 @@ async function handleWorkspaceRequest(url: string, response: FixtureResponse): P
     return true;
   }
 
-  const workspaceRoot = decodeURIComponent(trimmed.slice(0, slashIndex));
+  const requestedWorkspaceRoot = decodeURIComponent(trimmed.slice(0, slashIndex));
   const relativeArtifactPath = trimmed.slice(slashIndex + 1);
+  const [canonicalWorkspaceRoot, configuredWorkspaceRoot] = await Promise.all([
+    canonicalizeWorkspaceRoot(requestedWorkspaceRoot),
+    canonicalizeWorkspaceRoot(getConfiguredWorkspaceRoot()),
+  ]);
+  const workspaceRoot = canonicalWorkspaceRoot ?? resolve(requestedWorkspaceRoot);
+
+  if (configuredWorkspaceRoot && workspaceRoot !== configuredWorkspaceRoot) {
+    response.statusCode = 404;
+    response.end("Not Found");
+    return true;
+  }
+
   const workspaceArtifactsRoot = resolve(workspaceRoot, ".text-comprehend");
 
   if (!relativeArtifactPath.startsWith(".text-comprehend/")) {
@@ -122,12 +151,33 @@ async function handleWorkspaceRequest(url: string, response: FixtureResponse): P
   return true;
 }
 
+async function handleHealthRequest(url: string, response: FixtureResponse): Promise<boolean> {
+  if (url !== HEALTH_ROUTE) {
+    return false;
+  }
+
+  const configuredWorkspaceRoot = await canonicalizeWorkspaceRoot(getConfiguredWorkspaceRoot());
+  response.statusCode = 200;
+  response.setHeader("Content-Type", "application/json; charset=utf-8");
+  response.end(
+    JSON.stringify({
+      status: "ready",
+      workspaceRoot: configuredWorkspaceRoot,
+    }),
+  );
+  return true;
+}
+
 function registerDashboardMiddleware(server: FixtureServer) {
   server.middlewares.use(async (request, response, next) => {
     const url = request.url;
 
     if (!url) {
       next();
+      return;
+    }
+
+    if (await handleHealthRequest(url, response)) {
       return;
     }
 

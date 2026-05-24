@@ -1,8 +1,8 @@
 import { spawn } from "node:child_process";
 import type { AgentExecutor } from "../../../packages/core/src/pipeline/index.js";
 import { executeDirectCommand, type DirectCommandExecutionOptions } from "../../commands/index.js";
-import { launchDashboardWithDefaults, type DashboardLaunchResult } from "../../dashboard/launch-dashboard.js";
 import {
+  type DashboardLaunchCommandResult,
   formatDashboardLaunchResult,
   type BrowserOpenStatus,
 } from "../shared/dashboard-launch-adapter.js";
@@ -16,19 +16,14 @@ export interface OpencodeCommandHookDependencies {
   agentExecutor: AgentExecutor;
   executeCommand?: (
     options: DirectCommandExecutionOptions,
-  ) => Promise<string | DashboardLaunchHookResult>;
-  launchDashboard?: (options: { workspaceRoot: string }) => Promise<DashboardLaunchResult>;
+  ) => Promise<string | DashboardLaunchCommandResult>;
   openBrowserUrl?: (url: string) => Promise<BrowserOpenStatus>;
 }
 
-interface DashboardLaunchHookResult {
-  launch: DashboardLaunchResult;
-  browserOpen: BrowserOpenStatus;
-}
-
 const HANDLED_COMMANDS = new Set(["comprehend", "comprehend-summary", "comprehend-chat", "comprehend-explore"]);
+const BROWSER_OPEN_GRACE_PERIOD_MS = 50;
 
-function isDashboardLaunchHookResult(result: string | DashboardLaunchHookResult): result is DashboardLaunchHookResult {
+function isDashboardLaunchHookResult(result: string | DashboardLaunchCommandResult): result is DashboardLaunchCommandResult {
   return typeof result === "object" && result !== null && "launch" in result && "browserOpen" in result;
 }
 
@@ -55,24 +50,53 @@ async function defaultOpenBrowserUrl(url: string): Promise<BrowserOpenStatus> {
   }
 
   return new Promise<BrowserOpenStatus>((resolvePromise) => {
+    let settled = false;
+    let successTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const resolveOnce = (result: BrowserOpenStatus) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      if (successTimer) {
+        clearTimeout(successTimer);
+      }
+      resolvePromise(result);
+    };
+
     const child = spawn(command.command, command.args, {
       detached: true,
       stdio: "ignore",
     });
 
     child.once("error", (error) => {
-      resolvePromise({ status: "failed", detail: error.message });
+      resolveOnce({ status: "failed", detail: error.message });
     });
     child.once("spawn", () => {
       child.unref();
-      resolvePromise({ status: "opened" });
+      successTimer = setTimeout(() => {
+        resolveOnce({ status: "opened" });
+      }, BROWSER_OPEN_GRACE_PERIOD_MS);
+    });
+    child.once("close", (code, signal) => {
+      if (code === 0) {
+        resolveOnce({ status: "opened" });
+        return;
+      }
+
+      if (code !== null) {
+        resolveOnce({ status: "failed", detail: `Browser open command exited with code ${code}` });
+        return;
+      }
+
+      resolveOnce({ status: "failed", detail: `Browser open command exited with signal ${signal ?? "unknown"}` });
     });
   });
 }
 
 export function createOpencodeCommandHook(dependencies: OpencodeCommandHookDependencies) {
   const executeCommand = dependencies.executeCommand ?? executeDirectCommand;
-  const launchDashboard = dependencies.launchDashboard ?? launchDashboardWithDefaults;
   const openBrowserUrl = dependencies.openBrowserUrl ?? defaultOpenBrowserUrl;
 
   return async (input: {
@@ -86,16 +110,6 @@ export function createOpencodeCommandHook(dependencies: OpencodeCommandHookDepen
       return false;
     }
 
-    if (input.command === "comprehend-explore" && !dependencies.executeCommand) {
-      const launch = await launchDashboard({ workspaceRoot: dependencies.rootDir });
-      const browserOpen: BrowserOpenStatus = launch.status === "ready"
-        ? await openBrowserUrl(launch.url)
-        : { status: "unsupported" };
-
-      output.parts = [{ type: "text", text: formatDashboardLaunchResult(launch, browserOpen) }];
-      return true;
-    }
-
     const result = await executeCommand({
       command: input.command as DirectCommandExecutionOptions["command"],
       argumentsText: input.arguments,
@@ -103,15 +117,24 @@ export function createOpencodeCommandHook(dependencies: OpencodeCommandHookDepen
       agentExecutor: dependencies.agentExecutor,
     });
 
-    let text: string;
+    if (input.command === "comprehend-explore") {
+      if (!isDashboardLaunchHookResult(result)) {
+        throw new Error("Expected a structured dashboard launch result for /comprehend-explore.");
+      }
 
-    if (input.command === "comprehend-explore" && isDashboardLaunchHookResult(result)) {
-      text = formatDashboardLaunchResult(result.launch, result.browserOpen);
-    } else {
-      text = typeof result === "string" ? result : result.launch.message;
+      const browserOpen = result.launch.status === "ready"
+        ? await openBrowserUrl(result.launch.url)
+        : result.browserOpen;
+
+      output.parts = [{ type: "text", text: formatDashboardLaunchResult(result.launch, browserOpen) }];
+      return true;
     }
 
-    output.parts = [{ type: "text", text }];
+    if (typeof result !== "string") {
+      throw new Error(`Expected a string command result for /${input.command}.`);
+    }
+
+    output.parts = [{ type: "text", text: result }];
 
     return true;
   };

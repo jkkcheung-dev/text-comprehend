@@ -151,7 +151,17 @@ describe("executeDirectCommand", () => {
     );
 
     expect(launchExploreDashboard).toHaveBeenCalledWith({ workspaceRoot: "/repo" });
-    expect(output).toBe("Dashboard ready: http://localhost:4173\nOpen this URL manually: http://localhost:4173");
+    expect(output).toEqual({
+      launch: {
+        status: "ready",
+        workspaceRoot: "/repo",
+        url: "http://localhost:4173",
+        message: "Dashboard ready: http://localhost:4173",
+      },
+      browserOpen: {
+        status: "unsupported",
+      },
+    });
   });
 
   it("returns missing analysis guidance for /comprehend-explore", async () => {
@@ -177,7 +187,16 @@ describe("executeDirectCommand", () => {
       },
     );
 
-    expect(output).toBe("Run /comprehend first to generate `.text-comprehend/knowledge-graph.json`.");
+    expect(output).toEqual({
+      launch: {
+        status: "missing-analysis-output",
+        workspaceRoot: "/repo",
+        message: "Run /comprehend first to generate `.text-comprehend/knowledge-graph.json`.",
+      },
+      browserOpen: {
+        status: "unsupported",
+      },
+    });
   });
 
   it("uses the real dashboard launcher by default for /comprehend-explore", async () => {
@@ -218,7 +237,17 @@ describe("executeDirectCommand", () => {
     );
 
     expect(launchDashboardWithDefaults).toHaveBeenCalledWith({ workspaceRoot: "/repo" });
-    expect(output).toBe("Failed to launch the dashboard.\nPreview server startup is not implemented.");
+    expect(output).toEqual({
+      launch: {
+        status: "launch-failed",
+        workspaceRoot: "/repo",
+        message: "Failed to launch the dashboard.",
+        detail: "Preview server startup is not implemented.",
+      },
+      browserOpen: {
+        status: "unsupported",
+      },
+    });
 
     vi.doUnmock("../../dashboard/launch-dashboard.js");
     vi.resetModules();
@@ -262,7 +291,17 @@ describe("executeDirectCommand", () => {
     );
 
     expect(launchDashboardWithDefaults).toHaveBeenCalledWith({ workspaceRoot: "/repo" });
-    expect(output).toBe("Dashboard ready: http://127.0.0.1:4173\nOpen this URL manually: http://127.0.0.1:4173");
+    expect(output).toEqual({
+      launch: {
+        status: "ready",
+        workspaceRoot: "/repo",
+        url: "http://127.0.0.1:4173",
+        message: "Dashboard ready: http://127.0.0.1:4173",
+      },
+      browserOpen: {
+        status: "unsupported",
+      },
+    });
 
     vi.doUnmock("../../dashboard/launch-dashboard.js");
     vi.resetModules();
@@ -305,7 +344,16 @@ describe("executeDirectCommand", () => {
     );
 
     expect(launchDashboardWithDefaults).toHaveBeenCalledWith({ workspaceRoot: "/repo" });
-    expect(output).toBe("Run /comprehend first to generate `.text-comprehend/knowledge-graph.json`.");
+    expect(output).toEqual({
+      launch: {
+        status: "missing-analysis-output",
+        workspaceRoot: "/repo",
+        message: "Run /comprehend first to generate `.text-comprehend/knowledge-graph.json`.",
+      },
+      browserOpen: {
+        status: "unsupported",
+      },
+    });
 
     vi.doUnmock("../../dashboard/launch-dashboard.js");
     vi.resetModules();

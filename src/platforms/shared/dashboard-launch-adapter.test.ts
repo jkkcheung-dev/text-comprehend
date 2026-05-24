@@ -16,18 +16,18 @@ describe("formatDashboardLaunchResult", () => {
     expect(message).toBe("Run /comprehend first to generate `.text-comprehend/knowledge-graph.json`.");
   });
 
-  it("preserves launch failure detail when launch is not ready", () => {
+  it("does not append raw launch detail to default launch-failed output", () => {
     const message = formatDashboardLaunchResult(
       {
         status: "launch-failed",
         workspaceRoot: "/repo",
-        message: "Failed to launch the dashboard.",
-        detail: "dashboard crashed",
+        message: "Failed to launch the dashboard. Try again.",
+        detail: "npm run build --workspace @text-comprehend/dashboard exited with code 1",
       },
       { status: "failed", detail: "spawn xdg-open ENOENT" },
     );
 
-    expect(message).toBe("Failed to launch the dashboard.\ndashboard crashed");
+    expect(message).toBe("Failed to launch the dashboard. Try again.");
   });
 
   it("returns the opened dashboard message when browser open succeeds", () => {
