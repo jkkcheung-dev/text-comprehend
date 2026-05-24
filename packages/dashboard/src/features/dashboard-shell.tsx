@@ -7,6 +7,9 @@ type DashboardShellProps = {
   selectedDocumentId: string | null;
   selectedNodeId: string | null;
   onSelectDocument: (documentId: string) => void;
+  onRefresh?: () => void;
+  refreshWarning?: string | null;
+  onRetry?: () => void;
 };
 
 function getSelectedDocument(data: DashboardData, selectedDocumentId: string | null): DashboardDocument | null {
@@ -22,6 +25,9 @@ export function DashboardShell({
   selectedDocumentId,
   selectedNodeId,
   onSelectDocument,
+  onRefresh,
+  refreshWarning,
+  onRetry,
 }: DashboardShellProps) {
   const selectedDocument = getSelectedDocument(data, selectedDocumentId);
 
@@ -62,6 +68,12 @@ export function DashboardShell({
 
         <section>
           <h2>Graph canvas</h2>
+          {refreshWarning ? <p>{refreshWarning}</p> : null}
+          {refreshWarning && onRetry ? (
+            <button type="button" onClick={onRetry}>
+              Retry
+            </button>
+          ) : null}
           {data.state === "loading" ? <p>Loading dashboard data...</p> : null}
           {data.state === "empty" ? <p>Run /comprehend in your workspace to generate dashboard artifacts.</p> : null}
           {data.state === "malformed" ? (
@@ -71,7 +83,16 @@ export function DashboardShell({
               <p>{data.error}</p>
             </>
           ) : null}
-          {data.state === "ready" ? <p>Graph view available when data is ready.</p> : null}
+          {data.state === "ready" ? (
+            <>
+              {onRefresh ? (
+                <button type="button" onClick={onRefresh}>
+                  Refresh data
+                </button>
+              ) : null}
+              <p>Graph view available when data is ready.</p>
+            </>
+          ) : null}
         </section>
       </section>
 

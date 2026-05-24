@@ -137,6 +137,175 @@ describe("App", () => {
     expect(screen.getByText("Graph view available when data is ready.")).toBeInTheDocument();
   });
 
+  it("shows the malformed state when the first load fails before any ready data exists", async () => {
+    render(
+      <App
+        source={fixtureSource}
+        loadData={async () => ({
+          state: "malformed",
+          source: fixtureSource.meta,
+          path: ".text-comprehend/knowledge-graph.json",
+          error: "Unexpected token",
+        })}
+      />,
+    );
+
+    expect(await screen.findByText("Dashboard data could not be loaded")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
+    expect(screen.queryByText("# Document One")).not.toBeInTheDocument();
+  });
+
+  it("preserves the last ready view and shows a warning when a manual refresh returns malformed data", async () => {
+    const readyData: DashboardData = {
+      state: "ready",
+      source: fixtureSource.meta,
+      graph: {
+        version: "1.0.0",
+        generatedAt: "2026-04-28T00:00:00.000Z",
+        documents: [],
+        edges: [],
+      },
+      documents: [
+        createDocument("doc-1", "Document One", {
+          state: "available",
+          simplified: {
+            layeredSummary: "# Document One",
+            conceptGlossary: "# Glossary One",
+            argumentMap: "# Argument One",
+            comprehensionCheck: "# Questions One",
+          },
+        }),
+      ],
+    };
+
+    const loadData = vi
+      .fn<(source: DashboardSource) => Promise<DashboardData>>()
+      .mockResolvedValueOnce(readyData)
+      .mockResolvedValueOnce({
+        state: "malformed",
+        source: fixtureSource.meta,
+        path: ".text-comprehend/knowledge-graph.json",
+        error: "Unexpected token",
+      });
+
+    render(<App source={fixtureSource} loadData={loadData} />);
+
+    expect(await screen.findByText("# Document One")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
+
+    expect(await screen.findByText("Dashboard refresh failed. Showing the last loaded data.")).toBeInTheDocument();
+    expect(screen.getByText("# Document One")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard data could not be loaded")).not.toBeInTheDocument();
+  });
+
+  it("retries the same source and clears the warning after a successful reload", async () => {
+    const readyData: DashboardData = {
+      state: "ready",
+      source: fixtureSource.meta,
+      graph: {
+        version: "1.0.0",
+        generatedAt: "2026-04-28T00:00:00.000Z",
+        documents: [],
+        edges: [],
+      },
+      documents: [
+        createDocument("doc-1", "Document One", {
+          state: "available",
+          simplified: {
+            layeredSummary: "# Document One",
+            conceptGlossary: "# Glossary One",
+            argumentMap: "# Argument One",
+            comprehensionCheck: "# Questions One",
+          },
+        }),
+      ],
+    };
+
+    const refreshedReadyData: DashboardData = {
+      ...readyData,
+      documents: [
+        createDocument("doc-1", "Document One", {
+          state: "available",
+          simplified: {
+            layeredSummary: "# Document One v2",
+            conceptGlossary: "# Glossary One",
+            argumentMap: "# Argument One",
+            comprehensionCheck: "# Questions One",
+          },
+        }),
+      ],
+    };
+
+    const loadData = vi
+      .fn<(source: DashboardSource) => Promise<DashboardData>>()
+      .mockResolvedValueOnce(readyData)
+      .mockResolvedValueOnce({
+        state: "malformed",
+        source: fixtureSource.meta,
+        path: ".text-comprehend/knowledge-graph.json",
+        error: "Unexpected token",
+      })
+      .mockResolvedValueOnce(refreshedReadyData);
+
+    render(<App source={fixtureSource} loadData={loadData} />);
+
+    expect(await screen.findByText("# Document One")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
+
+    expect(await screen.findByText("Dashboard refresh failed. Showing the last loaded data.")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(await screen.findByText("# Document One v2")).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard refresh failed. Showing the last loaded data.")).not.toBeInTheDocument();
+  });
+
+  it("shows the empty state when a refresh returns empty data", async () => {
+    const readyData: DashboardData = {
+      state: "ready",
+      source: fixtureSource.meta,
+      graph: {
+        version: "1.0.0",
+        generatedAt: "2026-04-28T00:00:00.000Z",
+        documents: [],
+        edges: [],
+      },
+      documents: [
+        createDocument("doc-1", "Document One", {
+          state: "available",
+          simplified: {
+            layeredSummary: "# Document One",
+            conceptGlossary: "# Glossary One",
+            argumentMap: "# Argument One",
+            comprehensionCheck: "# Questions One",
+          },
+        }),
+      ],
+    };
+
+    const loadData = vi
+      .fn<(source: DashboardSource) => Promise<DashboardData>>()
+      .mockResolvedValueOnce(readyData)
+      .mockResolvedValueOnce({
+        state: "empty",
+        source: fixtureSource.meta,
+      });
+
+    render(<App source={fixtureSource} loadData={loadData} />);
+
+    expect(await screen.findByText("# Document One")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
+
+    expect(
+      await screen.findByText("Run /comprehend in your workspace to generate dashboard artifacts."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("# Document One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dashboard refresh failed. Showing the last loaded data.")).not.toBeInTheDocument();
+  });
+
   it("shows loading immediately when the source changes", async () => {
     const nextSource: DashboardSource = {
       meta: {
@@ -184,6 +353,68 @@ describe("App", () => {
     expect(screen.getByText("Loading dashboard data...")).toBeInTheDocument();
     expect(screen.queryByText("# Document One")).not.toBeInTheDocument();
     expect(screen.getByText("Workspace: /repo")).toBeInTheDocument();
+  });
+
+  it("drops the stale snapshot immediately when the source key changes", async () => {
+    const workspaceSource: DashboardSource = {
+      meta: {
+        mode: "workspace",
+        label: "Workspace: /repo",
+        workspaceRoot: "/repo",
+      },
+      read: async () => "",
+    };
+
+    const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) => {
+      if (source.meta.mode === "fixture") {
+        if (loadData.mock.calls.length === 1) {
+          return {
+            state: "ready",
+            source: fixtureSource.meta,
+            graph: {
+              version: "1.0.0",
+              generatedAt: "2026-04-28T00:00:00.000Z",
+              documents: [],
+              edges: [],
+            },
+            documents: [
+              createDocument("doc-1", "Document One", {
+                state: "available",
+                simplified: {
+                  layeredSummary: "# Document One",
+                  conceptGlossary: "# Glossary One",
+                  argumentMap: "# Argument One",
+                  comprehensionCheck: "# Questions One",
+                },
+              }),
+            ],
+          };
+        }
+
+        return {
+          state: "malformed",
+          source: fixtureSource.meta,
+          path: ".text-comprehend/knowledge-graph.json",
+          error: "Unexpected token",
+        };
+      }
+
+      return new Promise(() => {});
+    });
+
+    const view = render(<App source={fixtureSource} loadData={loadData} />);
+
+    expect(await screen.findByText("# Document One")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
+
+    expect(await screen.findByText("Dashboard refresh failed. Showing the last loaded data.")).toBeInTheDocument();
+
+    view.rerender(<App source={workspaceSource} loadData={loadData} />);
+
+    expect(screen.getByText("Loading dashboard data...")).toBeInTheDocument();
+    expect(screen.queryByText("# Document One")).not.toBeInTheDocument();
+    expect(screen.queryByText("Dashboard refresh failed. Showing the last loaded data.")).not.toBeInTheDocument();
   });
 
   it("does not reload or lose selection when the same logical source is recreated", async () => {
