@@ -1,3 +1,4 @@
+import type { Edge } from "@text-comprehend/core";
 import type {
   DashboardData,
   DashboardDocument,
@@ -69,21 +70,65 @@ export function createDocument(
   };
 }
 
+export function createConcept(id: string, name: string, definition = `${name} definition`) {
+  return {
+    id,
+    name,
+    definition,
+    importance: "core" as const,
+    sourceRefs: [],
+  };
+}
+
+export function createArgument(
+  id: string,
+  claim: string,
+  type: "main" | "supporting" | "counter" = "main",
+) {
+  return {
+    id,
+    claim,
+    type,
+    evidence: [],
+    assumptions: ["Assumption"],
+    gaps: ["Gap"],
+    sourceRefs: [],
+  };
+}
+
+export function createQuestion(id: string, question: string) {
+  return {
+    id,
+    question,
+    answer: "Answer",
+    difficulty: "basic" as const,
+    facet: "factual" as const,
+    sourceRefs: [],
+  };
+}
+
+export function createGraphEdge(source: string, target: string, type: Edge["type"]): Edge {
+  return { source, target, type };
+}
+
 export function createReadyDashboardData(options?: {
   source?: DashboardSourceMeta;
   documents?: DashboardDocument[];
+  graphEdges?: Edge[];
 }): ReadyDashboardData {
+  const documents =
+    options?.documents ?? [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))];
+
   return {
     state: "ready",
     source: options?.source ?? createFixtureSource().meta,
     graph: {
       version: "1.0.0",
       generatedAt: "2026-04-28T00:00:00.000Z",
-      documents: [],
-      edges: [],
+      documents,
+      edges: options?.graphEdges ?? [],
     },
-    documents:
-      options?.documents ?? [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    documents,
   };
 }
 
