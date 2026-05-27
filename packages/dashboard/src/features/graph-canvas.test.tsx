@@ -379,8 +379,66 @@ describe("GraphCanvas", () => {
     expect(screen.getByRole("button", { name: "Select graph node Document One" })).toBeDisabled();
   });
 
-  it("renders zoom-aware labels and selected-node emphasis", () => {
-    render(
+  it("switches node labels between standard, minimal, and detailed modes across zoom buckets", () => {
+    const view = render(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:concept:topic-1",
+            rawId: "topic-1",
+            kind: "concept",
+            label: "Topic",
+            documentId: "doc-1",
+            searchText: "topic",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={[]}
+        selectedNodeId="doc-1:concept:topic-1"
+        onSelectNode={() => {}}
+        viewState={{
+          zoom: 1,
+          offsetX: 12,
+          offsetY: 24,
+        }}
+        onViewStateChange={() => {}}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Select graph node Topic" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("button", { name: "Select graph node Topic" })).toHaveTextContent("Topic");
+
+    view.rerender(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:concept:topic-1",
+            rawId: "topic-1",
+            kind: "concept",
+            label: "Topic",
+            documentId: "doc-1",
+            searchText: "topic",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={[]}
+        selectedNodeId="doc-1:concept:topic-1"
+        onSelectNode={() => {}}
+        viewState={{
+          zoom: 0.7,
+          offsetX: 12,
+          offsetY: 24,
+        }}
+        onViewStateChange={() => {}}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Select graph node Topic" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("button", { name: "Select graph node Topic" })).toHaveTextContent("concept");
+
+    view.rerender(
       <GraphCanvas
         nodes={[
           {
@@ -406,12 +464,8 @@ describe("GraphCanvas", () => {
       />,
     );
 
-    const selectedNodeButton = screen.getByRole("button", {
-      name: "Select graph node Topic",
-    });
-
-    expect(selectedNodeButton).toHaveAttribute("aria-current", "true");
-    expect(selectedNodeButton).toHaveTextContent("Topic (concept)");
+    expect(screen.getByRole("button", { name: "Select graph node Topic" })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByRole("button", { name: "Select graph node Topic" })).toHaveTextContent("Topic (concept)");
   });
 
   it("updates the view state through zoom controls within bounds", () => {

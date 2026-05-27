@@ -577,7 +577,7 @@ describe("App", () => {
     expect(loadData).toHaveBeenCalledTimes(1);
   });
 
-  it("resets graph zoom to the default when the source changes", async () => {
+  it("switches graph labels across zoom levels and resets zoom on source change", async () => {
     const nextSource: DashboardSource = createWorkspaceSource("/repo");
     const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) =>
       createReadyDashboardData({
@@ -595,13 +595,24 @@ describe("App", () => {
     const view = render(<App source={fixtureSource} loadData={loadData} />);
 
     expect(await screen.findByText("Zoom: 1.0x")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select graph node Concept One" })).toHaveTextContent("Concept One");
 
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Zoom: 0.8x")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Select graph node Concept One" })).toHaveTextContent("concept");
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
     fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
 
     await waitFor(() => {
-      expect(screen.getByText("Zoom: 1.2x")).toBeInTheDocument();
+      expect(screen.getByText("Zoom: 1.6x")).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Select graph node Concept One" })).toHaveTextContent(
-        "Concept One",
+        "Concept One (concept)",
       );
     });
 
