@@ -9,6 +9,8 @@ import {
   getSelectedDocumentId,
 } from "./features/graph-view-model";
 
+const defaultGraphViewState = { zoom: 1, offsetX: 0, offsetY: 0 };
+
 type ReadyDashboardData = Extract<DashboardData, { state: "ready" }>;
 
 type AppProps = {
@@ -43,6 +45,7 @@ export function App({ source, loadData = loadDashboardData }: AppProps) {
   const [facets, setFacets] = useState(createDefaultFacetState);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [hasInitializedSelection, setHasInitializedSelection] = useState(false);
+  const [graphViewState, setGraphViewState] = useState(defaultGraphViewState);
 
   const readySnapshotForSource =
     lastReadyData && getSourceKey({ meta: lastReadyData.source, read: source.read }) === sourceKey
@@ -66,6 +69,7 @@ export function App({ source, loadData = loadDashboardData }: AppProps) {
       setFacets(createDefaultFacetState());
       setSelectedNodeId(null);
       setHasInitializedSelection(false);
+      setGraphViewState(defaultGraphViewState);
     }
 
     setRefreshWarning(null);
@@ -208,6 +212,8 @@ export function App({ source, loadData = loadDashboardData }: AppProps) {
         setRefreshToken((current) => current + 1);
       }}
       refreshWarning={visibleRefreshWarning}
+      viewState={graphViewState}
+      onViewStateChange={setGraphViewState}
       onRetry={() => {
         setRefreshWarning(null);
         setWarningSourceKey(null);

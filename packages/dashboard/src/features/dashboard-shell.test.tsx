@@ -32,6 +32,7 @@ describe("DashboardShell", () => {
     const onFacetChange = vi.fn();
     const onSelectDocument = vi.fn();
     const onSelectNode = vi.fn();
+    const onViewStateChange = vi.fn();
     const readyData = createReadyDashboardData();
 
     render(
@@ -60,6 +61,8 @@ describe("DashboardShell", () => {
         onFacetChange={onFacetChange}
         onSelectDocument={onSelectDocument}
         onSelectNode={onSelectNode}
+        viewState={{ zoom: 1, offsetX: 0, offsetY: 0 }}
+        onViewStateChange={onViewStateChange}
       />,
     );
 
@@ -83,6 +86,13 @@ describe("DashboardShell", () => {
       }),
     );
     expect(onSelectNode).toHaveBeenCalledWith("doc-1:document:doc-1");
+
+    expect(screen.getByText("Zoom: 1.0x")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Zoom in" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Zoom out" })).toBeEnabled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    expect(onViewStateChange).toHaveBeenCalledWith({ zoom: 1.2, offsetX: 0, offsetY: 0 });
 
     expect(screen.getByRole("region", { name: "Graph canvas" })).toBeInTheDocument();
     expect(screen.getByText("0 edges visible")).toBeInTheDocument();
@@ -297,5 +307,37 @@ describe("DashboardShell", () => {
     expect(screen.getByRole("button", { name: "Select graph node Document One" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Select graph node Concept One" })).toBeInTheDocument();
     expect(screen.getByText("Document One -> Concept One (contains)")).toBeInTheDocument();
+  });
+
+  it("shows the graph fallback message when the graph view-model provides one", () => {
+    const readyData = createReadyDashboardData({
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
+
+    render(
+      <DashboardShell
+        data={readyData}
+        {...defaultShellProps}
+        searchQuery=""
+        facets={createDefaultFacetState()}
+        graph={{
+          nodes: [],
+          matchedNodeIds: [],
+          visibleEdges: [],
+          renderMessage: "Graph view unavailable for the current selection.",
+        }}
+        onSearchQueryChange={() => {}}
+        onResetSearch={() => {}}
+        onFacetChange={() => {}}
+        onSelectNode={() => {}}
+        viewState={{ zoom: 1, offsetX: 0, offsetY: 0 }}
+        onViewStateChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Graph view unavailable for the current selection.")).toBeInTheDocument();
+    expect(screen.queryByText("No graph matches the current search and facet filters.")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Document One" })).toBeInTheDocument();
+    expect(screen.getByText("dashboard-workspace")).toBeInTheDocument();
   });
 });

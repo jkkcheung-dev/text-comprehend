@@ -576,4 +576,38 @@ describe("App", () => {
     expect(screen.getByText("# Document Two")).toBeInTheDocument();
     expect(loadData).toHaveBeenCalledTimes(1);
   });
+
+  it("resets graph zoom to the default when the source changes", async () => {
+    const nextSource: DashboardSource = createWorkspaceSource("/repo");
+    const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) =>
+      createReadyDashboardData({
+        source: source.meta,
+        documents: [
+          {
+            ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
+            concepts: [createConcept("concept-1", "Concept One")],
+          },
+        ],
+        graphEdges: [createGraphEdge("doc-1", "concept-1", "contains")],
+      }),
+    );
+
+    const view = render(<App source={fixtureSource} loadData={loadData} />);
+
+    expect(await screen.findByText("Zoom: 1.0x")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("Zoom: 1.2x")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Select graph node Concept One" })).toHaveTextContent(
+        "Concept One",
+      );
+    });
+
+    view.rerender(<App source={nextSource} loadData={loadData} />);
+
+    expect(await screen.findByText("Zoom: 1.0x")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Select graph node Concept One" })).toHaveTextContent("Concept One");
+  });
 });

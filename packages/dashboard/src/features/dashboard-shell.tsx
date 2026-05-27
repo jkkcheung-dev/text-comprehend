@@ -10,6 +10,16 @@ import {
 import { SearchControls } from "./search-controls";
 import { SourceStatusBadge } from "./source-status-badge";
 
+type GraphViewState = {
+  zoom: number;
+  offsetX: number;
+  offsetY: number;
+};
+
+type DashboardGraph = ReturnType<typeof buildGraphViewModel> & {
+  renderMessage?: string;
+};
+
 function getDocumentButtonLabels(documents: DashboardDocument[]): Map<string, string> {
   const titleCount = new Map<string, number>();
 
@@ -29,10 +39,12 @@ type DashboardShellProps = {
   data: DashboardData;
   searchQuery?: string;
   facets?: GraphFacetState;
-  graph?: ReturnType<typeof buildGraphViewModel> | null;
+  graph?: DashboardGraph | null;
   detailSelection?: DetailSelection | null;
   selectedDocumentId: string | null;
   selectedNodeId: string | null;
+  viewState?: GraphViewState;
+  onViewStateChange?: (viewState: GraphViewState) => void;
   onSearchQueryChange?: (query: string) => void;
   onResetSearch?: () => void;
   onFacetChange?: (facet: keyof GraphFacetState, nextValue: boolean) => void;
@@ -57,13 +69,17 @@ function getSelectedDocument(
 
 function getVisibleDocuments(
   data: DashboardData,
-  graph: ReturnType<typeof buildGraphViewModel> | null,
+  graph: DashboardGraph | null,
 ): DashboardDocument[] {
   if (data.state !== "ready") {
     return [];
   }
 
   if (!graph) {
+    return data.documents;
+  }
+
+  if (graph.renderMessage) {
     return data.documents;
   }
 
@@ -87,6 +103,8 @@ export function DashboardShell({
   detailSelection = null,
   selectedDocumentId,
   selectedNodeId,
+  viewState,
+  onViewStateChange,
   onSearchQueryChange,
   onResetSearch,
   onFacetChange,
@@ -158,6 +176,7 @@ export function DashboardShell({
 
         <section>
           <h2>Graph canvas</h2>
+          {data.state === "ready" && viewState ? <p>Zoom: {viewState.zoom.toFixed(1)}x</p> : null}
           {showPreviewNotice ? (
             <p>Search, facet filters, and graph node selection will be available after app wiring lands.</p>
           ) : null}
@@ -189,7 +208,9 @@ export function DashboardShell({
                 matchedNodeIds={visibleGraph?.matchedNodeIds ?? []}
                 selectedNodeId={selectedNodeId}
                 onSelectNode={onSelectNode ?? (() => {})}
-                emptyMessage="No graph matches the current search and facet filters."
+                viewState={viewState}
+                onViewStateChange={onViewStateChange}
+                emptyMessage={visibleGraph?.renderMessage ?? "No graph matches the current search and facet filters."}
                 disabled={!hasGraphSelection}
               />
             </>
