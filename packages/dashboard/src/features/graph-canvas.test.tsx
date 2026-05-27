@@ -4,6 +4,13 @@ import { cleanup, fireEvent, render, screen, within } from "@testing-library/rea
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { GraphCanvas } from "./graph-canvas";
+import * as graphViewModel from "./graph-view-model";
+
+const defaultViewState = {
+  zoom: 1,
+  offsetX: 0,
+  offsetY: 0,
+};
 
 afterEach(() => {
   cleanup();
@@ -29,6 +36,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={["doc-1:document:doc-1"]}
         selectedNodeId={null}
         onSelectNode={onSelectNode}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -46,6 +55,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -86,6 +97,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -111,6 +124,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -136,6 +151,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId="doc-1:document:doc-1"
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -177,6 +194,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -225,6 +244,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -267,6 +288,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -317,6 +340,8 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
       />,
     );
@@ -344,11 +369,220 @@ describe("GraphCanvas", () => {
         matchedNodeIds={[]}
         selectedNodeId={null}
         onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
         emptyMessage="No graph matches."
         disabled
       />,
     );
 
     expect(screen.getByRole("button", { name: "Select graph node Document One" })).toBeDisabled();
+  });
+
+  it("renders zoom-aware labels and selected-node emphasis", () => {
+    render(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:concept:topic-1",
+            rawId: "topic-1",
+            kind: "concept",
+            label: "Topic",
+            documentId: "doc-1",
+            searchText: "topic",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={[]}
+        selectedNodeId="doc-1:concept:topic-1"
+        onSelectNode={() => {}}
+        viewState={{
+          zoom: 1.8,
+          offsetX: 12,
+          offsetY: 24,
+        }}
+        onViewStateChange={() => {}}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    const selectedNodeButton = screen.getByRole("button", {
+      name: "Select graph node Topic",
+    });
+
+    expect(selectedNodeButton).toHaveAttribute("aria-current", "true");
+    expect(selectedNodeButton).toHaveTextContent("Topic (concept)");
+  });
+
+  it("updates the view state through zoom controls within bounds", () => {
+    const onViewStateChange = vi.fn();
+
+    render(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:document:doc-1",
+            rawId: "doc-1",
+            kind: "document",
+            label: "Document One",
+            documentId: "doc-1",
+            searchText: "document one",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={[]}
+        selectedNodeId={null}
+        onSelectNode={() => {}}
+        viewState={{
+          zoom: 1.8,
+          offsetX: 10,
+          offsetY: 20,
+        }}
+        onViewStateChange={onViewStateChange}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Zoom in" }));
+    fireEvent.click(screen.getByRole("button", { name: "Zoom out" }));
+
+    expect(onViewStateChange).toHaveBeenNthCalledWith(1, {
+      zoom: 2,
+      offsetX: 10,
+      offsetY: 20,
+    });
+    expect(onViewStateChange).toHaveBeenNthCalledWith(2, {
+      zoom: 1.6,
+      offsetX: 10,
+      offsetY: 20,
+    });
+  });
+
+  it("renders the graph fallback when the graph view-model is not renderable", () => {
+    const validateRenderableGraphSpy = vi
+      .spyOn(graphViewModel, "validateRenderableGraph")
+      .mockReturnValue({ state: "invalid", message: "Graph view unavailable for the current selection." });
+
+    render(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:concept:topic-1",
+            rawId: "topic-1",
+            kind: "concept",
+            label: "Topic",
+            documentId: "doc-1",
+            searchText: "topic",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={["missing-node"]}
+        selectedNodeId={null}
+        onSelectNode={() => {}}
+        viewState={defaultViewState}
+        onViewStateChange={() => {}}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    expect(screen.getByText("Graph view unavailable for the current selection.")).toBeInTheDocument();
+    expect(screen.queryByText("No graph matches.")).not.toBeInTheDocument();
+
+    validateRenderableGraphSpy.mockRestore();
+  });
+
+  it("renders minimal labels when zoomed far out", () => {
+    render(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:concept:topic-1",
+            rawId: "topic-1",
+            kind: "concept",
+            label: "Topic",
+            documentId: "doc-1",
+            searchText: "topic",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={[]}
+        selectedNodeId={null}
+        onSelectNode={() => {}}
+        viewState={{
+          zoom: 0.7,
+          offsetX: 0,
+          offsetY: 0,
+        }}
+        onViewStateChange={() => {}}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Select graph node Topic" })).toHaveTextContent("concept");
+  });
+
+  it("keeps minimal zoom accessible names distinct for duplicate labels", () => {
+    render(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:concept:topic-1",
+            rawId: "topic-1",
+            kind: "concept",
+            label: "Topic",
+            documentId: "doc-1",
+            searchText: "topic",
+          },
+          {
+            id: "doc-2:concept:topic-2",
+            rawId: "topic-2",
+            kind: "concept",
+            label: "Topic",
+            documentId: "doc-2",
+            searchText: "topic",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={[]}
+        selectedNodeId={null}
+        onSelectNode={() => {}}
+        viewState={{
+          zoom: 0.7,
+          offsetX: 0,
+          offsetY: 0,
+        }}
+        onViewStateChange={() => {}}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Select graph node Topic (doc-1)" })).toHaveTextContent("concept");
+    expect(screen.getByRole("button", { name: "Select graph node Topic (doc-2)" })).toHaveTextContent("concept");
+  });
+
+  it("disables zoom controls when no view-state change handler is provided", () => {
+    render(
+      <GraphCanvas
+        nodes={[
+          {
+            id: "doc-1:document:doc-1",
+            rawId: "doc-1",
+            kind: "document",
+            label: "Document One",
+            documentId: "doc-1",
+            searchText: "document one",
+          },
+        ]}
+        edges={[]}
+        matchedNodeIds={[]}
+        selectedNodeId={null}
+        onSelectNode={() => {}}
+        viewState={defaultViewState}
+        emptyMessage="No graph matches."
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "Zoom in" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Zoom out" })).toBeDisabled();
   });
 });
