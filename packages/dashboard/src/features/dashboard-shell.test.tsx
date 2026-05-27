@@ -340,4 +340,33 @@ describe("DashboardShell", () => {
     expect(screen.getByRole("button", { name: "Document One" })).toBeInTheDocument();
     expect(screen.getByText("dashboard-workspace")).toBeInTheDocument();
   });
+
+  it("derives a graph fallback message when filters hide every renderable node", () => {
+    const readyData = createReadyDashboardData({
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
+
+    render(
+      <DashboardShell
+        data={readyData}
+        {...defaultShellProps}
+        searchQuery=""
+        facets={{ documents: false, concepts: false, arguments: false, questions: false }}
+        graph={{
+          nodes: [],
+          matchedNodeIds: [],
+          visibleEdges: [],
+        }}
+        onSearchQueryChange={() => {}}
+        onResetSearch={() => {}}
+        onFacetChange={() => {}}
+        onSelectNode={() => {}}
+        viewState={{ zoom: 1, offsetX: 0, offsetY: 0 }}
+        onViewStateChange={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Graph view unavailable for the current selection.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Document One" })).toBeInTheDocument();
+  });
 });

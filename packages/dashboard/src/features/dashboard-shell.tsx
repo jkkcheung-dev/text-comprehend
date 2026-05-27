@@ -5,6 +5,7 @@ import { GraphCanvas } from "./graph-canvas";
 import {
   buildGraphViewModel,
   createDefaultFacetState,
+  validateRenderableGraph,
   type GraphFacetState,
 } from "./graph-view-model";
 import { SearchControls } from "./search-controls";
@@ -19,6 +20,8 @@ type GraphViewState = {
 type DashboardGraph = ReturnType<typeof buildGraphViewModel> & {
   renderMessage?: string;
 };
+
+const defaultGraphEmptyMessage = "No graph matches the current search and facet filters.";
 
 function getDocumentButtonLabels(documents: DashboardDocument[]): Map<string, string> {
   const titleCount = new Map<string, number>();
@@ -70,6 +73,7 @@ function getSelectedDocument(
 function getVisibleDocuments(
   data: DashboardData,
   graph: DashboardGraph | null,
+  graphRenderMessage: string | null,
 ): DashboardDocument[] {
   if (data.state !== "ready") {
     return [];
@@ -79,7 +83,7 @@ function getVisibleDocuments(
     return data.documents;
   }
 
-  if (graph.renderMessage) {
+  if (graphRenderMessage) {
     return data.documents;
   }
 
@@ -93,6 +97,29 @@ function getDefaultDetailSelection(document: DashboardDocument | null): DetailSe
   }
 
   return { kind: "document", label: document.title, documentTitle: document.title };
+}
+
+function getGraphRenderMessage(
+  data: DashboardData,
+  graph: DashboardGraph | null,
+  searchQuery: string,
+  facets: GraphFacetState,
+): string | null {
+  if (data.state !== "ready" || !graph || graph.renderMessage) {
+    return graph?.renderMessage ?? null;
+  }
+
+  if (searchQuery.trim() !== "" || data.documents.length === 0 || graph.nodes.length > 0) {
+    return null;
+  }
+
+  const renderState = validateRenderableGraph({
+    nodes: graph.nodes,
+    visibleEdges: graph.visibleEdges,
+    matchedNodeIds: graph.matchedNodeIds,
+  });
+
+  return renderState.state === "invalid" ? renderState.message : null;
 }
 
 export function DashboardShell({
@@ -114,17 +141,19 @@ export function DashboardShell({
   refreshWarning,
   onRetry,
 }: DashboardShellProps) {
-  const visibleGraph =
+  const visibleGraph: DashboardGraph | null =
     data.state === "ready" ? (graph ?? buildGraphViewModel(data, { searchQuery, facets })) : null;
+  const graphRenderMessage = getGraphRenderMessage(data, visibleGraph, searchQuery, facets);
   const hasSearchControls = Boolean(onSearchQueryChange && onResetSearch);
   const hasFacetControls = Boolean(onFacetChange);
   const hasGraphSelection = Boolean(onSelectNode);
   const showPreviewNotice = data.state === "ready" && (!hasSearchControls || !hasFacetControls || !hasGraphSelection);
-  const visibleDocuments = getVisibleDocuments(data, visibleGraph);
+  const visibleDocuments = getVisibleDocuments(data, visibleGraph, graphRenderMessage);
   const selectedDocument = getSelectedDocument(visibleDocuments, selectedDocumentId, !hasGraphSelection && !detailSelection);
   const effectiveSelectedDocumentId = selectedDocument?.id ?? null;
   const effectiveDetailSelection = detailSelection ?? getDefaultDetailSelection(selectedDocument);
   const documentButtonLabels = getDocumentButtonLabels(visibleDocuments);
+  const graphEmptyMessage = graphRenderMessage ?? defaultGraphEmptyMessage;
 
   return (
     <main>
@@ -210,7 +239,7 @@ export function DashboardShell({
                 onSelectNode={onSelectNode ?? (() => {})}
                 viewState={viewState}
                 onViewStateChange={onViewStateChange}
-                emptyMessage={visibleGraph?.renderMessage ?? "No graph matches the current search and facet filters."}
+                emptyMessage={graphEmptyMessage}
                 disabled={!hasGraphSelection}
               />
             </>

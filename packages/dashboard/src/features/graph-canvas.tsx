@@ -41,13 +41,9 @@ export function GraphCanvas({
   emptyMessage,
   disabled = false,
 }: GraphCanvasProps) {
-  if (nodes.length === 0) {
-    return <p>{emptyMessage}</p>;
-  }
-
   const renderState = validateRenderableGraph({ nodes, visibleEdges: edges, matchedNodeIds });
   if (renderState.state === "invalid") {
-    return <p>{renderState.message}</p>;
+    return <p>{nodes.length === 0 ? emptyMessage : renderState.message}</p>;
   }
 
   const getCountKey = (...parts: string[]) => JSON.stringify(parts);
