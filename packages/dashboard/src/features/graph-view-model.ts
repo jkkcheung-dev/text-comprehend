@@ -24,8 +24,33 @@ export type GraphEdgeRecord = Edge & {
   rawTarget: string;
 };
 
+export type GraphZoomBucket = "far" | "mid" | "near";
+
 export function createDefaultFacetState(): GraphFacetState {
   return { documents: true, concepts: true, arguments: true, questions: true };
+}
+
+export function getZoomBucket(zoom: number): GraphZoomBucket {
+  if (zoom < 0.85) return "far";
+  if (zoom > 1.4) return "near";
+  return "mid";
+}
+
+export function getNodeLabelMode(bucket: GraphZoomBucket): "minimal" | "standard" | "detailed" {
+  if (bucket === "far") return "minimal";
+  if (bucket === "near") return "detailed";
+  return "standard";
+}
+
+export function validateRenderableGraph(model: {
+  nodes: unknown[];
+  visibleEdges: unknown[];
+  matchedNodeIds: string[];
+}) {
+  // Phase 2 only guards the empty-node fallback; other render checks stay with callers.
+  return model.nodes.length === 0
+    ? { state: "invalid" as const, message: "Graph view unavailable for the current selection." }
+    : { state: "valid" as const };
 }
 
 export function buildGraphViewModel(

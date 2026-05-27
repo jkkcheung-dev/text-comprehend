@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   buildGraphViewModel,
   createDefaultFacetState,
+  getNodeLabelMode,
   getSelectedDocumentId,
+  getZoomBucket,
+  validateRenderableGraph,
 } from "./graph-view-model";
 import {
   createArgument,
@@ -616,6 +619,35 @@ describe("graph-view-model", () => {
     expect(getSelectedDocumentId(data, null)).toBe("doc-1");
     expect(getSelectedDocumentId(data, "doc-2")).toBe("doc-2");
     expect(getSelectedDocumentId(data, "missing-node")).toBe("doc-1");
+  });
+});
+
+describe("graph zoom rules", () => {
+  it("maps zoom values into stable buckets", () => {
+    expect(getZoomBucket(0.7)).toBe("far");
+    expect(getZoomBucket(0.85)).toBe("mid");
+    expect(getZoomBucket(1)).toBe("mid");
+    expect(getZoomBucket(1.4)).toBe("mid");
+    expect(getZoomBucket(1.8)).toBe("near");
+  });
+
+  it("shows richer labels only when zoomed in", () => {
+    expect(getNodeLabelMode("far")).toBe("minimal");
+    expect(getNodeLabelMode("mid")).toBe("standard");
+    expect(getNodeLabelMode("near")).toBe("detailed");
+  });
+
+  it("flags empty renderable graphs", () => {
+    expect(validateRenderableGraph({ nodes: [], visibleEdges: [], matchedNodeIds: [] })).toEqual({
+      state: "invalid",
+      message: "Graph view unavailable for the current selection.",
+    });
+  });
+
+  it("marks graphs with nodes as renderable", () => {
+    expect(validateRenderableGraph({ nodes: [{}], visibleEdges: [], matchedNodeIds: [] })).toEqual({
+      state: "valid",
+    });
   });
 });
 
