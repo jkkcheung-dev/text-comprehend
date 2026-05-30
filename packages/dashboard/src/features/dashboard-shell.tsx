@@ -1,4 +1,5 @@
 import styles from "./dashboard-shell.module.css";
+import { ReactFlowProvider } from "@xyflow/react";
 import type { DashboardData, DashboardDocument } from "../data/types";
 import { DetailPanelShell, type DetailSelection } from "./detail-panel-shell";
 import { FacetToggleGroup } from "./facet-toggle-group";
@@ -248,17 +249,19 @@ export function DashboardShell({
                   </p>
                 )}
                 {viewState && <p className={styles.zoomIndicator}>Zoom: {viewState.zoom.toFixed(1)}x</p>}
-                <GraphCanvas
-                  nodes={visibleGraph?.nodes ?? []}
-                  edges={visibleGraph?.visibleEdges ?? []}
-                  matchedNodeIds={visibleGraph?.matchedNodeIds ?? []}
-                  selectedNodeId={selectedNodeId}
-                  onSelectNode={onSelectNode ?? (() => {})}
-                  viewState={viewState}
-                  onViewStateChange={onViewStateChange}
-                  emptyMessage={graphEmptyMessage}
-                  disabled={!hasGraphSelection}
-                />
+                <ReactFlowProvider>
+                  <GraphCanvas
+                    nodes={visibleGraph?.nodes ?? []}
+                    edges={visibleGraph?.visibleEdges ?? []}
+                    matchedNodeIds={visibleGraph?.matchedNodeIds ?? []}
+                    selectedNodeId={selectedNodeId}
+                    onSelectNode={onSelectNode ?? (() => {})}
+                    viewState={viewState}
+                    onViewStateChange={onViewStateChange}
+                    emptyMessage={graphEmptyMessage}
+                    disabled={!hasGraphSelection}
+                  />
+                </ReactFlowProvider>
               </>
             )}
           </div>

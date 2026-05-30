@@ -3,11 +3,14 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 type ConceptNodeType = Node<{ label: string }, "concept">;
 
 export function ConceptNode({ data, selected }: NodeProps<ConceptNodeType>) {
+  const borderColor = selected ? "var(--color-primary-light)" : "var(--color-concept)";
   return (
     <div
       style={{
         background: "var(--color-surface)",
-        border: `2px solid ${selected ? "var(--color-primary-light)" : "var(--color-concept)"}`,
+        borderTop: `2px solid ${borderColor}`,
+        borderRight: `2px solid ${borderColor}`,
+        borderBottom: `2px solid ${borderColor}`,
         borderLeft: `3px solid var(--color-concept)`,
         borderRadius: "var(--radius-md)",
         padding: "10px 14px",

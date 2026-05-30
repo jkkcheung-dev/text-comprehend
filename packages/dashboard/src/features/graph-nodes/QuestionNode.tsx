@@ -3,11 +3,14 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 type QuestionNodeType = Node<{ label: string }, "question">;
 
 export function QuestionNode({ data, selected }: NodeProps<QuestionNodeType>) {
+  const borderColor = selected ? "var(--color-primary-light)" : "var(--color-question)";
   return (
     <div
       style={{
         background: "var(--color-surface)",
-        border: `2px solid ${selected ? "var(--color-primary-light)" : "var(--color-question)"}`,
+        borderTop: `2px solid ${borderColor}`,
+        borderRight: `2px solid ${borderColor}`,
+        borderBottom: `2px solid ${borderColor}`,
         borderLeft: `3px solid var(--color-question)`,
         borderRadius: "var(--radius-md)",
         padding: "10px 14px",

@@ -3,11 +3,14 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 type ArgumentNodeType = Node<{ label: string }, "argument">;
 
 export function ArgumentNode({ data, selected }: NodeProps<ArgumentNodeType>) {
+  const borderColor = selected ? "var(--color-primary-light)" : "var(--color-argument)";
   return (
     <div
       style={{
         background: "var(--color-surface)",
-        border: `2px solid ${selected ? "var(--color-primary-light)" : "var(--color-argument)"}`,
+        borderTop: `2px solid ${borderColor}`,
+        borderRight: `2px solid ${borderColor}`,
+        borderBottom: `2px solid ${borderColor}`,
         borderLeft: `3px solid var(--color-argument)`,
         borderRadius: "var(--radius-md)",
         padding: "10px 14px",
