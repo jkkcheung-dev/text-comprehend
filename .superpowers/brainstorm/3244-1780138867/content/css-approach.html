@@ -1,0 +1,40 @@
+<h2>CSS Approach for Dashboard</h2>
+<p class="subtitle">How to make the dashboard look polished with minimal friction</p>
+
+<div class="options">
+  <div class="option" data-choice="css-modules" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>CSS Modules (Recommended)</h3>
+      <p><strong>Zero config</strong> — Vite handles <code>*.module.css</code> natively. Scoped class names prevent collisions. Co-located with components. Use CSS custom properties for theming.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>No new dependencies</li><li>Scoped by default</li><li>Co-located with components</li><li>Full CSS flexibility (grid, animations, custom props)</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Must write raw CSS</li><li>No design tokens out of the box</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="tailwind" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Tailwind CSS</h3>
+      <p>Utility-first framework. Fastest prototyping. Large ecosystem. Requires <code>@tailwindcss/vite</code> plugin + config.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Rapid prototyping</li><li>Design tokens built-in (spacing, colors, typography)</li><li>Huge ecosystem</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Adds 2-3 dependencies</li><li>Long inline class strings in JSX</li><li>Paradigm shift from CSS</li><li>v4 breaking changes from v3</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="css-modules-panda" onclick="toggleSelect(this)">
+    <div class="letter">C</div>
+    <div class="content">
+      <h3>CSS Modules + Design Tokens</h3>
+      <p>Option A plus a lightweight tokens file (<code>tokens.module.css</code>) with CSS custom properties for colors, spacing, typography, shadows. No extra deps.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>All of A's benefits</li><li>Consistent design language</li><li>Easy dark mode via custom props</li><li>Zero extra dependencies</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Slightly more upfront setup</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>

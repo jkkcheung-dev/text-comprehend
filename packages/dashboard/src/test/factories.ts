@@ -42,6 +42,18 @@ export function createAvailableDetail(layeredSummary: string): DashboardDocument
   };
 }
 
+export function createAvailableDetailFull(
+  layeredSummary = "# Summary",
+  conceptGlossary = "# Glossary",
+  argumentMap = "# Arguments",
+  comprehensionCheck = "# Questions",
+): DashboardDocumentDetail {
+  return {
+    state: "available",
+    simplified: { layeredSummary, conceptGlossary, argumentMap, comprehensionCheck },
+  };
+}
+
 export function createDegradedDetail(path: string, error: string): DashboardDocumentDetail {
   return {
     state: "degraded",

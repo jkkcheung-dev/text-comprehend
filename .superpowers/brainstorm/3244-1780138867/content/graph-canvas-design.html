@@ -1,0 +1,161 @@
+<h2>Design Section: Graph Canvas (xyflow + Dagre)</h2>
+<p class="subtitle">Custom node types per facet, dagre auto-layout, built-in pan + wheel zoom</p>
+
+<div class="section">
+  <h3>Custom Node Types</h3>
+  <p>Four xyflow custom node components, one per facet kind. Each has a colored left-border, icon, and Handles on both sides.</p>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px">
+
+    <!-- Document Node -->
+    <div class="mockup">
+      <div class="mockup-header">DocumentNode</div>
+      <div class="mockup-body" style="padding:12px">
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid #E2E8F0;border-left:3px solid #1E40AF;border-radius:6px;padding:10px 12px;background:white;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <span style="font-size:16px">📄</span>
+          <div>
+            <p style="font-size:12px;font-weight:600;color:#1E3A8A;margin:0">architecture.md</p>
+            <p style="font-size:10px;color:#94A3B8;margin:2px 0 0">last analyzed: Apr 28</p>
+          </div>
+        </div>
+        <p style="font-size:10px;color:#64748B;margin:8px 0 0">
+          <strong>Handle positions:</strong> Right (source), Left (target)<br>
+          <strong>Width:</strong> max 220px, truncate title
+        </p>
+      </div>
+    </div>
+
+    <!-- Concept Node -->
+    <div class="mockup">
+      <div class="mockup-header">ConceptNode</div>
+      <div class="mockup-body" style="padding:12px">
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid #E2E8F0;border-left:3px solid #7C3AED;border-radius:6px;padding:10px 12px;background:white;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <span style="font-size:16px">💡</span>
+          <div>
+            <p style="font-size:12px;font-weight:600;color:#1E3A8A;margin:0">Modularity</p>
+            <p style="font-size:10px;color:#64748B;margin:2px 0 0">importance: core</p>
+          </div>
+        </div>
+        <p style="font-size:10px;color:#64748B;margin:8px 0 0">
+          <strong>Handle positions:</strong> Left + Right both source/target<br>
+          <strong>Width:</strong> max 200px, shows importance badge
+        </p>
+      </div>
+    </div>
+
+    <!-- Argument Node -->
+    <div class="mockup">
+      <div class="mockup-header">ArgumentNode</div>
+      <div class="mockup-body" style="padding:12px">
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid #E2E8F0;border-left:3px solid #F59E0B;border-radius:6px;padding:10px 12px;background:white;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <span style="font-size:16px">🗣️</span>
+          <div>
+            <p style="font-size:12px;font-weight:600;color:#1E3A8A;margin:0">Modules reduce complexity</p>
+            <p style="font-size:10px;color:#64748B;margin:2px 0 0">type: main</p>
+          </div>
+        </div>
+        <p style="font-size:10px;color:#64748B;margin:8px 0 0">
+          <strong>Handle positions:</strong> Left + Right both source/target<br>
+          <strong>Width:</strong> max 200px, argument type badge
+        </p>
+      </div>
+    </div>
+
+    <!-- Question Node -->
+    <div class="mockup">
+      <div class="mockup-header">QuestionNode</div>
+      <div class="mockup-body" style="padding:12px">
+        <div style="display:flex;align-items:center;gap:10px;border:1px solid #E2E8F0;border-left:3px solid #10B981;border-radius:6px;padding:10px 12px;background:white;box-shadow:0 1px 2px rgba(0,0,0,0.04)">
+          <span style="font-size:16px">❓</span>
+          <div>
+            <p style="font-size:12px;font-weight:600;color:#1E3A8A;margin:0">What is loose coupling?</p>
+            <p style="font-size:10px;color:#64748B;margin:2px 0 0">difficulty: basic</p>
+          </div>
+        </div>
+        <p style="font-size:10px;color:#64748B;margin:8px 0 0">
+          <strong>Handle positions:</strong> Left + Right both source/target<br>
+          <strong>Width:</strong> max 200px, difficulty badge
+        </p>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Edge Styling by Type</h3>
+  <table style="width:100%;font-size:12px;border-collapse:collapse;margin-top:8px">
+    <tr style="background:#F1F5F9">
+      <th style="text-align:left;padding:6px 8px">Edge Type</th>
+      <th style="text-align:left;padding:6px 8px">Stroke</th>
+      <th style="text-align:left;padding:6px 8px">Style</th>
+      <th style="text-align:left;padding:6px 8px">Animated</th>
+      <th style="text-align:left;padding:6px 8px">Label</th>
+    </tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">contains</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">#94A3B8</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">solid 1.5px</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">no</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">contains</td></tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">defines</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">#7C3AED</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">solid 1.5px</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">yes</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">defines</td></tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">depends_on</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">#7C3AED</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">dashed 1.5px</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">yes</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">depends on</td></tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">exemplifies</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">#7C3AED</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">dotted 1.5px</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">no</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">exemplifies</td></tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">supports</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">#F59E0B</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">solid 1.5px</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">no</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">supports</td></tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">contradicts</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">#EF4444</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">solid 1.5px</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">yes</td><td style="padding:6px 8px;border-bottom:1px solid #E5E7EB">contradicts</td></tr>
+    <tr><td style="padding:6px 8px">questions</td><td style="padding:6px 8px">#10B981</td><td style="padding:6px 8px">dashed 1.5px</td><td style="padding:6px 8px">no</td><td style="padding:6px 8px">questions</td></tr>
+  </table>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Dagre Layout Configuration</h3>
+  <pre style="font-size:11px;background:#1E293B;color:#E2E8F0;padding:12px;border-radius:6px">
+const layoutOptions = {
+  rankdir: "LR",       // left-to-right hierarchy
+  nodesep: 60,         // horizontal spacing between nodes
+  ranksep: 120,        // vertical spacing between ranks
+  marginx: 40,
+  marginy: 40,
+};
+
+// Called after buildGraphViewModel produces nodes + edges:
+function applyDagreLayout(
+  nodes: GraphNodeRecord[],
+  edges: GraphEdgeRecord[]
+): { nodes: Node[]; edges: Edge[] } {
+  const g = new dagre.graphlib.Graph();
+  g.setGraph(layoutOptions);
+  g.setDefaultEdgeLabel(() => ({}));
+  nodes.forEach(n => g.setNode(n.id, { width: 200, height: 56 }));
+  edges.forEach(e => g.setEdge(e.source, e.target));
+  dagre.layout(g);
+  return {
+    nodes: nodes.map(n => ({ ...n, position: g.node(n.id) })),
+    edges: edges.map(e => ({ ...e, type: getEdgeType(e.type) })),
+  };
+}</pre>
+</div>
+
+<div class="section" style="margin-top:20px">
+  <h3>Interaction: What xyflow Handles Automatically</h3>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:8px">
+    <div style="background:#F0FDF4;border:1px solid #BBF7D0;border-radius:6px;padding:10px">
+      <p style="font-weight:600;color:#166534;font-size:12px;margin:0">Built-in (free)</p>
+      <ul style="font-size:11px;color:#166534;margin:6px 0 0;padding-left:18px">
+        <li>Pan (drag on canvas)</li>
+        <li>Scroll-wheel zoom to cursor</li>
+        <li>Node selection</li>
+        <li>Edge marker arrows</li>
+        <li>Fit-view on load</li>
+        <li>Minimap (optional component)</li>
+        <li>Controls overlay (optional)</li>
+      </ul>
+    </div>
+    <div style="background:#FEF2F2;border:1px solid #FECACA;border-radius:6px;padding:10px">
+      <p style="font-weight:600;color:#991B1B;font-size:12px;margin:0">We build</p>
+      <ul style="font-size:11px;color:#991B1B;margin:6px 0 0;padding-left:18px">
+        <li>4 custom node types</li>
+        <li>Edge styling by type</li>
+        <li>Dagre layout computation</li>
+        <li>Search match highlighting</li>
+        <li>Selection → Detail panel sync</li>
+        <li>Facet toggle → hide nodes</li>
+      </ul>
+    </div>
+  </div>
+</div>

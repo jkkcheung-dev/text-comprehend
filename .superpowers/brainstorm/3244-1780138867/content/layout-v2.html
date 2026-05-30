@@ -1,0 +1,156 @@
+<h2>Dashboard Layout — Data-Dense Pattern</h2>
+<p class="subtitle">Design system: Blue primary (#1E40AF), clean grid, minimal padding, maximum data visibility</p>
+
+<div class="mockup" style="max-width:960px;margin:0 auto">
+  <div class="mockup-header">Text Comprehend Dashboard — 1440px viewport</div>
+  <div class="mockup-body" style="padding:0;font-family:'Fira Sans',system-ui,sans-serif">
+
+    <!-- HEADER: 48px fixed -->
+    <div style="display:flex;align-items:center;height:48px;background:#1E40AF;color:white;padding:0 16px;gap:12px;font-size:12px">
+      <span style="font-weight:700;font-size:13px;font-family:'Fira Code',monospace">Text Comprehend</span>
+      <div style="flex:1;display:flex;align-items:center;gap:6px;max-width:320px;background:#1E3A8A;border-radius:4px;padding:4px 8px">
+        <span style="opacity:0.5">🔍</span>
+        <span style="font-size:11px;opacity:0.6">Search graph...</span>
+      </div>
+      <span style="font-size:10px;padding:2px 8px;background:#22C55E;border-radius:3px;font-weight:500">Workspace</span>
+      <span style="font-size:10px;opacity:0.7;margin-left:4px">Refresh data</span>
+    </div>
+
+    <!-- BODY: calc(100vh - 48px) -->
+    <div style="display:flex;height:400px">
+
+      <!-- SIDEBAR: 240px -->
+      <div style="width:240px;background:#F1F5F9;border-right:1px solid #CBD5E1;display:flex;flex-direction:column;font-size:11px">
+
+        <!-- Documents section -->
+        <div style="padding:12px">
+          <p style="font-weight:600;color:#1E3A8A;text-transform:uppercase;font-size:10px;letter-spacing:0.05em;margin:0 0 8px">Documents</p>
+          <div style="display:flex;flex-direction:column;gap:2px">
+            <div style="padding:6px 8px;border-radius:4px;background:#DBEAFE;color:#1E40AF;font-weight:500;display:flex;align-items:center;gap:6px;cursor:pointer">
+              <span style="color:#1E40AF;font-size:12px">📄</span> architecture.md
+            </div>
+            <div style="padding:6px 8px;border-radius:4px;display:flex;align-items:center;gap:6px;cursor:pointer;color:#334155">
+              <span style="opacity:0.6;font-size:12px">📄</span> design-principles.md
+            </div>
+            <div style="padding:6px 8px;border-radius:4px;display:flex;align-items:center;gap:6px;cursor:pointer;color:#334155">
+              <span style="opacity:0.6;font-size:12px">📄</span> implementation.md
+            </div>
+          </div>
+        </div>
+
+        <!-- Facet filters -->
+        <div style="padding:12px;border-top:1px solid #CBD5E1">
+          <p style="font-weight:600;color:#1E3A8A;text-transform:uppercase;font-size:10px;letter-spacing:0.05em;margin:0 0 8px">Visible Node Types</p>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 0">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#1E40AF"></span> Documents
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 0">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#7C3AED"></span> Concepts
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 0">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#F59E0B"></span> Arguments
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 0">
+              <span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:#10B981"></span> Questions
+            </label>
+          </div>
+        </div>
+
+        <!-- Source details -->
+        <div style="margin-top:auto;padding:12px;border-top:1px solid #CBD5E1;font-size:10px;color:#64748B">
+          <p style="font-weight:600;color:#1E3A8A;text-transform:uppercase;font-size:10px;letter-spacing:0.05em;margin:0 0 4px">Source</p>
+          <p style="margin:0">/workspace/project</p>
+        </div>
+      </div>
+
+      <!-- MAIN AREA: flex-1 -->
+      <div style="flex:1;display:flex;flex-direction:column;background:#F8FAFC">
+
+        <!-- GRAPH CANVAS -->
+        <div style="flex:1;position:relative;display:flex;align-items:center;justify-content:center;border-bottom:1px solid #CBD5E1;overflow:hidden">
+          <p style="position:absolute;top:8px;right:12px;font-size:10px;color:#64748B;margin:0">Zoom: 1.0x</p>
+
+          <!-- Mock graph nodes (xyflow-style positioning) -->
+          <div style="position:relative;width:100%;height:100%;padding:48px">
+            <!-- Document node -->
+            <div style="position:absolute;left:64px;top:100px;background:white;border:2px solid #1E40AF;border-radius:6px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+              <p style="font-size:11px;font-weight:600;color:#1E3A8A;margin:0">architecture.md</p>
+              <p style="font-size:9px;color:#64748B;margin:2px 0 0">document</p>
+            </div>
+            <!-- Concept node -->
+            <div style="position:absolute;left:280px;top:40px;background:white;border:2px solid #7C3AED;border-radius:6px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+              <p style="font-size:11px;font-weight:600;color:#1E3A8A;margin:0">Modularity</p>
+              <p style="font-size:9px;color:#64748B;margin:2px 0 0">concept</p>
+            </div>
+            <!-- Concept node -->
+            <div style="position:absolute;left:280px;top:180px;background:white;border:2px solid #7C3AED;border-radius:6px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+              <p style="font-size:11px;font-weight:600;color:#1E3A8A;margin:0">Separation of Concerns</p>
+              <p style="font-size:9px;color:#64748B;margin:2px 0 0">concept</p>
+            </div>
+            <!-- Argument node -->
+            <div style="position:absolute;left:480px;top:100px;background:white;border:2px solid #F59E0B;border-radius:6px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+              <p style="font-size:11px;font-weight:600;color:#1E3A8A;margin:0">Modules reduce complexity</p>
+              <p style="font-size:9px;color:#64748B;margin:2px 0 0">argument</p>
+            </div>
+            <!-- Question node -->
+            <div style="position:absolute;left:480px;top:200px;background:white;border:2px solid #10B981;border-radius:6px;padding:10px 14px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+              <p style="font-size:11px;font-weight:600;color:#1E3A8A;margin:0">What is loose coupling?</p>
+              <p style="font-size:9px;color:#64748B;margin:2px 0 0">question</p>
+            </div>
+
+            <!-- Edge lines (SVG) -->
+            <svg style="position:absolute;inset:0;pointer-events:none;width:100%;height:100%">
+              <line x1="153" y1="118" x2="278" y2="60" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+              <line x1="153" y1="124" x2="278" y2="195" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+              <line x1="369" y1="60" x2="478" y2="115" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+              <line x1="369" y1="195" x2="478" y2="115" stroke="#94A3B8" stroke-width="1.5" marker-end="url(#arrow)"/>
+              <defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M 0 0 L 10 5 L 0 10 z" fill="#94A3B8"/></marker></defs>
+            </svg>
+          </div>
+        </div>
+
+        <!-- DETAIL PANEL: ~35% viewport -->
+        <div style="height:180px;display:flex;flex-direction:column;background:white">
+          <!-- Selected node info bar -->
+          <div style="display:flex;align-items:center;padding:4px 12px;border-bottom:1px solid #E2E8F0;font-size:10px;gap:12px;color:#475569">
+            <span>Selected: <strong style="color:#1E3A8A">Modularity</strong></span>
+            <span style="color:#94A3B8">|</span>
+            <span>Type: <strong>concept</strong></span>
+            <span style="color:#94A3B8">|</span>
+            <span>Document: <strong>architecture.md</strong></span>
+          </div>
+          <!-- Tab bar -->
+          <div style="display:flex;background:#F8FAFC;border-bottom:1px solid #E2E8F0">
+            <div style="padding:6px 14px;font-size:11px;font-weight:600;color:#1E40AF;border-bottom:2px solid #1E40AF;cursor:pointer">Layered Summary</div>
+            <div style="padding:6px 14px;font-size:11px;color:#64748B;cursor:pointer">Concept Glossary</div>
+            <div style="padding:6px 14px;font-size:11px;color:#64748B;cursor:pointer">Argument Map</div>
+            <div style="padding:6px 14px;font-size:11px;color:#64748B;cursor:pointer">Comprehension Check</div>
+          </div>
+          <!-- Content area -->
+          <div style="flex:1;padding:12px 16px;font-size:12px;line-height:1.6;color:#334155;overflow-y:auto">
+            <p style="font-weight:700;margin:0 0 4px;color:#1E3A8A">Modularity</p>
+            <p style="margin:0 0 6px;color:#475569">The principle of partitioning a system into discrete, interchangeable components that can be developed, tested, and maintained independently.</p>
+            <p style="margin:0;font-size:10px;color:#94A3B8">Importance: core</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:24px">
+  <h3>Layout Properties</h3>
+  <table style="width:100%;font-size:13px;border-collapse:collapse">
+    <tr style="background:#F1F5F9">
+      <th style="text-align:left;padding:8px">Zone</th>
+      <th style="text-align:left;padding:8px">Size</th>
+      <th style="text-align:left;padding:8px">Overflow</th>
+      <th style="text-align:left;padding:8px">Background</th>
+    </tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">Header</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">h-12 (48px fixed)</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">—</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">Primary (#1E40AF)</td></tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">Sidebar</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">w-60 (240px)</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">y-auto</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">slate-100 (#F1F5F9)</td></tr>
+    <tr><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">Graph Canvas</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">flex-1 (remaining space above detail panel)</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">hidden</td><td style="padding:6px 8px;border-bottom:1px solid #E2E8F0">white</td></tr>
+    <tr><td style="padding:6px 8px">Detail Panel</td><td style="padding:6px 8px">h-[40vh] min-h-48 (flexible, 40% viewport)</td><td style="padding:6px 8px">y-auto</td><td style="padding:6px 8px">white</td></tr>
+  </table>
+</div>

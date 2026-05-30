@@ -1,0 +1,114 @@
+<h2>Dashboard Layout — Before vs After</h2>
+<p class="subtitle">Existing components stay; new shaded sections are what we're adding</p>
+
+<div class="split">
+  <div class="mockup">
+    <div class="mockup-header">Current Dashboard</div>
+    <div class="mockup-body" style="padding:0">
+      <div class="mock-nav" style="margin:0;border-radius:0">Text Comprehend  |  [search]  |  Workspace</div>
+      <div style="display:flex">
+        <div class="mock-sidebar" style="flex:1;border-radius:0;margin:0">
+          <p class="label">Documents</p>
+          <p style="font-size:11px">doc-1.md</p>
+          <p style="font-size:11px">doc-2.md</p>
+          <p class="label" style="margin-top:8px">Facet filters</p>
+          <p style="font-size:10px">☑ Docs ☑ Concepts ☑ Args ☑ Questions</p>
+        </div>
+        <div class="mock-content" style="flex:2;border-radius:0;margin:0">
+          <p class="label">Graph Canvas</p>
+          <p style="font-size:10px;color:#888">[Zoom: 1.0x] [Zoom in] [Zoom out]</p>
+          <p style="font-size:10px;color:#888">3 edges visible</p>
+          <p style="font-size:10px;color:#888">• Document One<br>• Concept A<br>• Argument B</p>
+        </div>
+      </div>
+      <div style="border-top:1px solid #ddd;padding:8px;font-size:10px;color:#888">
+        Detail panel: layered summary shown in &lt;pre&gt;
+      </div>
+    </div>
+  </div>
+  <div class="mockup">
+    <div class="mockup-header">After Polish (This Design)</div>
+    <div class="mockup-body" style="padding:0">
+      <div class="mock-nav" style="margin:0;border-radius:0;background:#1e293b;color:white">Text Comprehend  |  [search]  |  Workspace</div>
+      <div style="display:flex">
+        <div class="mock-sidebar" style="flex:1;border-radius:0;margin:0;background:#f8fafc">
+          <p class="label">Documents</p>
+          <p style="font-size:11px">doc-1.md</p>
+          <p style="font-size:11px">doc-2.md</p>
+          <p class="label" style="margin-top:8px">Facet filters</p>
+          <p style="font-size:10px">☑ Docs ☑ Concepts ☑ Args ☑ Questions</p>
+        </div>
+        <div class="mock-content" style="flex:2;border-radius:0;margin:0;background:white">
+          <p class="label" style="background:#dbeafe;padding:4px 8px;border-radius:3px">xyflow graph with pan & wheel zoom</p>
+          <div style="position:relative;height:100px;overflow:hidden;margin:4px 0">
+            <div style="position:absolute;left:10px;top:10px;background:#e8f4fd;border:1px solid #3b82f6;padding:4px 8px;border-radius:4px;font-size:10px">📄 doc</div>
+            <div style="position:absolute;left:80px;top:5px;background:#f0e6f6;border:1px solid #a855f7;padding:4px 8px;border-radius:4px;font-size:10px">💡 C1</div>
+            <div style="position:absolute;left:80px;top:40px;background:#fef3c7;border:1px solid #eab308;padding:4px 8px;border-radius:4px;font-size:10px">🗣️ A1</div>
+            <div style="position:absolute;left:140px;top:20px;background:#d1fae5;border:1px solid #22c55e;padding:4px 8px;border-radius:4px;font-size:10px">❓ Q1</div>
+            <svg style="position:absolute;left:0;top:0;width:100%;height:100%"><line x1="58" y1="24" x2="80" y2="14" stroke="#94a3b8" stroke-width="1"/><line x1="58" y1="30" x2="80" y2="48" stroke="#94a3b8" stroke-width="1"/><line x1="58" y1="30" x2="140" y2="28" stroke="#94a3b8" stroke-width="1"/></svg>
+          </div>
+        </div>
+      </div>
+      <div style="border-top:1px solid #e2e8f0;padding:0">
+        <div style="display:flex;background:#f1f5f9;border-bottom:1px solid #e2e8f0">
+          <p style="padding:6px 12px;margin:0;font-size:11px;border-bottom:2px solid #3b82f6;font-weight:bold">Summary</p>
+          <p style="padding:6px 12px;margin:0;font-size:11px;color:#64748b">Glossary</p>
+          <p style="padding:6px 12px;margin:0;font-size:11px;color:#64748b">Arguments</p>
+          <p style="padding:6px 12px;margin:0;font-size:11px;color:#64748b">Q&A</p>
+        </div>
+        <div style="padding:8px;font-size:10px;color:#666">Rendered markdown content for selected tab</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:2rem">
+  <h3>What Changes</h3>
+  <table style="width:100%;font-size:13px;border-collapse:collapse">
+    <tr style="background:#f1f5f9">
+      <th style="text-align:left;padding:8px;width:30%">Component</th>
+      <th style="text-align:left;padding:8px;width:25%">Change</th>
+      <th style="text-align:left;padding:8px;width:45%">What's Added</th>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><code>DashboardShell</code></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>Modify</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb">Import CSS module. Apply grid layout classes.</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><code>GraphCanvas</code></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>Rewrite</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb">Replace text-list rendering with xyflow. Add dagre layout. Custom node types per facet kind. Built-in pan/zoom.</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><code>DetailPanelShell</code></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>Modify</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb">Add tab bar. Render tabs for Summary/Glossary/Arguments/Q&A. Wire conceptGlossary, argumentMap, comprehensionCheck artifacts.</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><code>ComprehensionCheck</code></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>New</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb">New component. Renders Q&A list with show/hide answer. Difficulty badges.</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><code>tokens.module.css</code></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>New</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb">Design tokens: colors, spacing, typography, shadows as CSS custom properties.</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><code>*.module.css</code> files</td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>New</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb">One per component: dashboard-shell, graph-canvas, detail-panel, comprehension-check, search-controls, facet-toggle-group.</td>
+    </tr>
+    <tr>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><code>package.json</code></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb"><strong>Modify</strong></td>
+      <td style="padding:8px;border-bottom:1px solid #e5e7eb">Add @xyflow/react, @dagrejs/dagre dependencies.</td>
+    </tr>
+    <tr>
+      <td style="padding:8px"><code>graph-view-model.ts</code></td>
+      <td style="padding:8px"><strong>No changes</strong></td>
+      <td style="padding:8px">Pure logic layer stays the same. xyflow consumes the same GraphNodeRecord/GraphEdgeRecord output.</td>
+    </tr>
+  </table>
+</div>

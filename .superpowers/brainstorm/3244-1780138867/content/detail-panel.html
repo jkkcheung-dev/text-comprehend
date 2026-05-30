@@ -1,0 +1,67 @@
+<h2>Detail Panel: Displaying All 4 Artifacts</h2>
+<p class="subtitle">Currently only <code>layeredSummary</code> is shown. The other three artifacts are loaded but hidden.</p>
+
+<div class="options">
+  <div class="option" data-choice="tabs" onclick="toggleSelect(this)">
+    <div class="letter">A</div>
+    <div class="content">
+      <h3>Tabbed Panel (Recommended)</h3>
+      <p>Horizontal tab bar at top of detail panel. One tab per artifact. Content area switches. Current selection is clearly indicated.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Clear navigation — user always knows what they're looking at</li><li>One artifact visible at a time = focused reading</li><li>Familiar pattern (browser tabs, IDE panels)</li><li>Works well with markdown rendered content</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Can't compare two artifacts side by side</li><li>Tab bar takes vertical space</li></ul></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="option" data-choice="accordion" onclick="toggleSelect(this)">
+    <div class="letter">B</div>
+    <div class="content">
+      <h3>Accordion Sections</h3>
+      <p>Collapsible sections stacked vertically. User expands what's relevant. Multiple sections can be open simultaneously.</p>
+      <div class="pros-cons">
+        <div class="pros"><h4>Pros</h4><ul><li>Can compare sections side by side</li><li>Saves space when collapsed</li><li>Good for browsing multiple artifacts</li></ul></div>
+        <div class="cons"><h4>Cons</h4><ul><li>Expanding/collapsing is slow for frequent switching</li><li>Scrolling through all four open gets long</li><li>Less discoverable than tabs</li></ul></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:2rem">
+  <h3>Visual Comparison</h3>
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">A: Tabs</div>
+      <div class="mockup-body" style="padding:0">
+        <div style="display:flex;background:#f3f4f6;border-bottom:2px solid #3b82f6">
+          <p class="label" style="padding:8px 16px;background:#3b82f6;color:white;border-radius:0;margin:0">Summary</p>
+          <p class="label" style="padding:8px 16px;background:#e5e7eb;border-radius:0;margin:0">Glossary</p>
+          <p class="label" style="padding:8px 16px;background:#e5e7eb;border-radius:0;margin:0">Arguments</p>
+          <p class="label" style="padding:8px 16px;background:#e5e7eb;border-radius:0;margin:0">Q&A</p>
+        </div>
+        <div style="padding:12px">
+          <p class="label" style="font-weight:bold;margin-bottom:4px"># Layered Summary</p>
+          <p style="font-size:12px;color:#888">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore...</p>
+        </div>
+      </div>
+    </div>
+    <div class="mockup">
+      <div class="mockup-header">B: Accordion</div>
+      <div class="mockup-body" style="padding:8px">
+        <div style="background:#f3f4f6;padding:8px;margin-bottom:4px">
+          <p class="label" style="font-weight:bold">▸ Layered Summary</p>
+        </div>
+        <div style="background:#e8f4fd;padding:8px;margin-bottom:4px">
+          <p class="label" style="font-weight:bold">▾ Concept Glossary</p>
+          <p style="font-size:12px;color:#888;margin-top:4px">## Glossary<br>A list of extracted concepts...</p>
+        </div>
+        <div style="background:#f3f4f6;padding:8px;margin-bottom:4px">
+          <p class="label" style="font-weight:bold">▸ Argument Map</p>
+        </div>
+        <div style="background:#f3f4f6;padding:8px">
+          <p class="label" style="font-weight:bold">▸ Comprehension Check</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

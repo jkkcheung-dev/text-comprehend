@@ -195,7 +195,7 @@ describe("DashboardShell", () => {
 
     render(<DashboardShell data={readyData} {...defaultShellProps} selectedDocumentId={null} />);
 
-    expect(screen.getByText("# Document One")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Document One" })).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("button", { name: "Document One" })).not.toHaveAttribute("aria-pressed");
     expect(screen.getByRole("button", { name: "Document Two" })).not.toHaveAttribute("aria-current");
@@ -212,7 +212,7 @@ describe("DashboardShell", () => {
 
     render(<DashboardShell data={readyData} {...defaultShellProps} selectedDocumentId="missing-doc" />);
 
-    expect(screen.getByText("# Document One")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Document One" })).toHaveAttribute("aria-current", "true");
     expect(screen.getByRole("button", { name: "Document One" })).not.toHaveAttribute("aria-pressed");
     expect(screen.getByRole("button", { name: "Document Two" })).not.toHaveAttribute("aria-current");

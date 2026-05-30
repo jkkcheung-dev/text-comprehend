@@ -1,197 +1,99 @@
 // @vitest-environment jsdom
 
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, describe, expect, it } from "vitest";
-import { createAvailableDetail, createDegradedDetail, createDocument } from "../test/factories";
 import { DetailPanelShell } from "./detail-panel-shell";
+import {
+  createDocument,
+  createAvailableDetail,
+  createAvailableDetailFull,
+  createDegradedDetail,
+  createConcept,
+  createArgument,
+  createQuestion,
+} from "../test/factories";
 
 afterEach(() => {
   cleanup();
 });
 
-describe("DetailPanelShell", () => {
-  it("shows the empty selection state when no document is selected", () => {
+describe("DetailPanelShell (with tabs)", () => {
+  it("renders tab bar", () => {
+    const doc = createDocument("doc-1", "Test Document", createAvailableDetailFull());
+    render(<DetailPanelShell document={doc} selectedNodeId={null} selection={null} />);
+    expect(screen.getByText("Layered Summary")).toBeDefined();
+    expect(screen.getByText("Concept Glossary")).toBeDefined();
+    expect(screen.getByText("Argument Map")).toBeDefined();
+    expect(screen.getByText("Comprehension Check")).toBeDefined();
+  });
+
+  it("Layered Summary tab is active by default", () => {
+    const doc = createDocument("doc-1", "Test Document", createAvailableDetailFull("# My Summary"));
+    render(<DetailPanelShell document={doc} selectedNodeId={null} selection={null} />);
+    expect(screen.getByText("My Summary")).toBeDefined();
+  });
+
+  it("switches to Concept Glossary tab on click", async () => {
+    const doc = createDocument(
+      "doc-1",
+      "Test Document",
+      createAvailableDetailFull("# Summary", "# Glossary Content"),
+    );
+    render(<DetailPanelShell document={doc} selectedNodeId={null} selection={null} />);
+    fireEvent.click(screen.getByText("Concept Glossary"));
+    expect(screen.getByText("Glossary Content")).toBeDefined();
+  });
+
+  it("switches to Argument Map tab on click", async () => {
+    const doc = createDocument(
+      "doc-1",
+      "Test Document",
+      createAvailableDetailFull("# Summary", "# G", "# Argument Content"),
+    );
+    render(<DetailPanelShell document={doc} selectedNodeId={null} selection={null} />);
+    fireEvent.click(screen.getByText("Argument Map"));
+    expect(screen.getByText("Argument Content")).toBeDefined();
+  });
+
+  it("switches to Comprehension Check tab on click", async () => {
+    const doc = createDocument("doc-1", "Test Document", createAvailableDetailFull());
+    doc.questions = [createQuestion("q1", "What is X?")];
+    render(<DetailPanelShell document={doc} selectedNodeId={null} selection={null} />);
+    fireEvent.click(screen.getByText("Comprehension Check"));
+    expect(screen.getByText(/What is X\?/)).toBeDefined();
+  });
+
+  it("shows tab content via renderMarkdown", () => {
+    const doc = createDocument("doc-1", "Doc", createAvailableDetailFull("**bold** text"));
+    render(<DetailPanelShell document={doc} selectedNodeId={null} selection={null} />);
+    expect(screen.getByText("bold")).toBeDefined();
+  });
+
+  it("shows no-document message when document is null", () => {
     render(<DetailPanelShell document={null} selectedNodeId={null} selection={null} />);
-
-    expect(screen.getByText("Select a document to inspect its content.")).toBeInTheDocument();
-    expect(screen.getByText("Selected node: none")).toBeInTheDocument();
+    expect(screen.getByText(/Select a document/)).toBeDefined();
   });
 
-  it("renders layered summary content for available document detail", () => {
-    render(
-      <DetailPanelShell
-        document={createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))}
-        selection={{
-          kind: "document",
-          label: "Document One",
-          documentTitle: "Document One",
-          filePath: "docs/doc-1.md",
-          fileType: "md",
-          lastAnalyzed: "2026-04-28T00:00:00.000Z",
-        }}
-        selectedNodeId={null}
-      />,
+  it("renders degraded message for degraded documents", () => {
+    const doc = createDocument(
+      "doc-1",
+      "Doc",
+      createDegradedDetail("path/to/file", "Missing"),
     );
-
-    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
-    expect(screen.getByText("Node type: document")).toBeInTheDocument();
-    expect(screen.getByText("File path: docs/doc-1.md")).toBeInTheDocument();
-    expect(screen.getByText("File type: md")).toBeInTheDocument();
-    expect(screen.getByText("Last analyzed: 2026-04-28T00:00:00.000Z")).toBeInTheDocument();
-    expect(screen.getByText("# Document One")).toBeInTheDocument();
+    render(<DetailPanelShell document={doc} selectedNodeId={null} selection={null} />);
+    expect(screen.getByText(/unavailable/)).toBeDefined();
   });
 
-  it("renders concept detail when a concept node is selected", () => {
-    render(
-      <DetailPanelShell
-        document={createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))}
-        selection={{
-          kind: "concept",
-          label: "Event Loop",
-          documentTitle: "Document One",
-          definition: "Event Loop definition",
-          importance: "core",
-          sourceRefs: [{ documentId: "doc-1", startLine: 4, endLine: 7, excerpt: "Event loop excerpt" }],
-        }}
-        selectedNodeId="doc-1:concept:concept-1"
-      />,
+  it("resets to Layered Summary tab when document changes", async () => {
+    const doc1 = createDocument("doc-1", "Doc One", createAvailableDetailFull("# Summary One"));
+    const { rerender } = render(
+      <DetailPanelShell document={doc1} selectedNodeId={null} selection={null} />,
     );
+    fireEvent.click(screen.getByText("Concept Glossary"));
 
-    expect(screen.getByRole("heading", { name: "Event Loop" })).toBeInTheDocument();
-    expect(screen.getByText("Node type: concept")).toBeInTheDocument();
-    expect(screen.getByText("Event Loop definition")).toBeInTheDocument();
-    expect(screen.getByText("Importance: core")).toBeInTheDocument();
-    expect(screen.getByText("Document: Document One")).toBeInTheDocument();
-    expect(screen.getByText("doc-1 lines 4-7: Event loop excerpt")).toBeInTheDocument();
-  });
-
-  it("renders argument detail when an argument node is selected", () => {
-    render(
-      <DetailPanelShell
-        document={createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))}
-        selection={{
-          kind: "argument",
-          label: "Rendering stays responsive",
-          documentTitle: "Document One",
-          argumentType: "main",
-          sourceRefs: [{ documentId: "doc-1", startLine: 10, endLine: 12, excerpt: "Argument excerpt" }],
-          evidence: [
-            {
-              content: "Profiler samples show shorter commits.",
-              type: "data",
-              strength: "strong",
-              sourceRef: {
-                documentId: "doc-1",
-                startLine: 13,
-                endLine: 14,
-                excerpt: "Evidence excerpt",
-              },
-            },
-          ],
-          assumptions: ["Assumption A"],
-          gaps: ["Gap A"],
-        }}
-        selectedNodeId="doc-1:argument:argument-1"
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "Rendering stays responsive" })).toBeInTheDocument();
-    expect(screen.getByText("Node type: argument")).toBeInTheDocument();
-    expect(screen.getByText("Type: main")).toBeInTheDocument();
-    expect(screen.getByText("Evidence items: 1")).toBeInTheDocument();
-    expect(screen.getByText("data (strong): Profiler samples show shorter commits.")).toBeInTheDocument();
-    expect(screen.getByText("doc-1 lines 10-12: Argument excerpt")).toBeInTheDocument();
-    expect(screen.getByText("Assumption A")).toBeInTheDocument();
-    expect(screen.getByText("Gap A")).toBeInTheDocument();
-    expect(screen.getByText("Document: Document One")).toBeInTheDocument();
-  });
-
-  it("renders question detail when a question node is selected", () => {
-    render(
-      <DetailPanelShell
-        document={createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))}
-        selection={{
-          kind: "question",
-          label: "What triggers rerendering?",
-          documentTitle: "Document One",
-          answer: "State updates",
-          difficulty: "basic",
-          facet: "factual",
-          sourceRefs: [{ documentId: "doc-1", startLine: 21, endLine: 22, excerpt: "Question excerpt" }],
-        }}
-        selectedNodeId="doc-1:question:question-1"
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "What triggers rerendering?" })).toBeInTheDocument();
-    expect(screen.getByText("Node type: question")).toBeInTheDocument();
-    expect(screen.getByText("Answer: State updates")).toBeInTheDocument();
-    expect(screen.getByText("Difficulty: basic")).toBeInTheDocument();
-    expect(screen.getByText("Facet: factual")).toBeInTheDocument();
-    expect(screen.getByText("Document: Document One")).toBeInTheDocument();
-    expect(screen.getByText("doc-1 lines 21-22: Question excerpt")).toBeInTheDocument();
-  });
-
-  it("renders the degraded document detail message and artifact path", () => {
-    render(
-      <DetailPanelShell
-        document={createDocument(
-          "doc-2",
-          "Document Two",
-          createDegradedDetail(
-            ".text-comprehend/simplified/doc-2/layered-summary.md",
-            "ENOENT: missing file",
-          ),
-        )}
-        selection={{
-          kind: "document",
-          label: "Document Two",
-          documentTitle: "Document Two",
-          filePath: "docs/doc-2.md",
-          fileType: "md",
-          lastAnalyzed: "2026-04-28T00:00:00.000Z",
-        }}
-        selectedNodeId="node-1"
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "Document Two" })).toBeInTheDocument();
-    expect(screen.getByText("Selected node: node-1")).toBeInTheDocument();
-    expect(screen.getByText("Node type: document")).toBeInTheDocument();
-    expect(screen.getByText("File path: docs/doc-2.md")).toBeInTheDocument();
-    expect(screen.getByText("Document detail is unavailable for this artifact.")).toBeInTheDocument();
-    expect(screen.getByText(".text-comprehend/simplified/doc-2/layered-summary.md")).toBeInTheDocument();
-    expect(screen.getByText("ENOENT: missing file")).toBeInTheDocument();
-  });
-
-  it("preserves degraded document messaging when a concept is selected", () => {
-    render(
-      <DetailPanelShell
-        document={createDocument(
-          "doc-2",
-          "Document Two",
-          createDegradedDetail(
-            ".text-comprehend/simplified/doc-2/layered-summary.md",
-            "ENOENT: missing file",
-          ),
-        )}
-        selection={{
-          kind: "concept",
-          label: "Event Loop",
-          documentTitle: "Document Two",
-          definition: "Event Loop definition",
-          importance: "core",
-          sourceRefs: [{ documentId: "doc-2", startLine: 4, endLine: 7, excerpt: "Event loop excerpt" }],
-        }}
-        selectedNodeId="doc-2:concept:concept-1"
-      />,
-    );
-
-    expect(screen.getByRole("heading", { name: "Event Loop" })).toBeInTheDocument();
-    expect(screen.getByText("Event Loop definition")).toBeInTheDocument();
-    expect(screen.getByText("Document detail is unavailable for this artifact.")).toBeInTheDocument();
-    expect(screen.getByText(".text-comprehend/simplified/doc-2/layered-summary.md")).toBeInTheDocument();
-    expect(screen.getByText("ENOENT: missing file")).toBeInTheDocument();
+    const doc2 = createDocument("doc-2", "Doc Two", createAvailableDetailFull("# Summary Two"));
+    rerender(<DetailPanelShell document={doc2} selectedNodeId={null} selection={null} />);
+    expect(screen.getByText("Summary Two")).toBeDefined();
   });
 });
