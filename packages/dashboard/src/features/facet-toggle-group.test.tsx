@@ -14,7 +14,7 @@ describe("FacetToggleGroup", () => {
   it("renders the supported facet toggles", () => {
     render(<FacetToggleGroup facets={createDefaultFacetState()} onFacetChange={vi.fn()} />);
 
-    expect(screen.getByRole("group", { name: "Visible node types" })).toBeInTheDocument();
+    expect(screen.getByRole("group", { name: "Visible Node Types" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Documents" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Concepts" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeChecked();

@@ -1,3 +1,4 @@
+import styles from "./App.module.css";
 import "./styles/reset.css";
 import { useEffect, useState } from "react";
 import { loadDashboardData } from "./data/load-dashboard-data";
@@ -186,7 +187,8 @@ export function App({ source, loadData = loadDashboardData }: AppProps) {
   }, [graph, hasInitializedSelection, selectedNodeId, visibleData]);
 
   return (
-    <DashboardShell
+    <div className={styles.app}>
+      <DashboardShell
       data={visibleData}
       searchQuery={searchQuery}
       facets={facets}
@@ -221,6 +223,7 @@ export function App({ source, loadData = loadDashboardData }: AppProps) {
         setRefreshToken((current) => current + 1);
       }}
     />
+    </div>
   );
 }
 

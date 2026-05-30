@@ -71,7 +71,7 @@ describe("DashboardShell", () => {
     });
     expect(onSearchQueryChange).toHaveBeenCalledWith("document");
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
     expect(onResetSearch).toHaveBeenCalledTimes(1);
 
     fireEvent.click(screen.getByRole("checkbox", { name: "Questions" }));
@@ -277,7 +277,7 @@ describe("DashboardShell", () => {
 
     expect(screen.getByText("Search, facet filters, and graph node selection will be available after app wiring lands.")).toBeInTheDocument();
     expect(screen.getByRole("searchbox", { name: "Search graph" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Clear search" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Clear" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Documents" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Concepts" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeDisabled();

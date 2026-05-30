@@ -1,3 +1,4 @@
+import styles from "./facet-toggle-group.module.css";
 import type { GraphFacetState } from "./graph-view-model";
 
 type FacetToggleGroupProps = {
@@ -15,12 +16,20 @@ const facetLabels = {
 
 const facetKeys = Object.keys(facetLabels) as Array<keyof GraphFacetState>;
 
+const facetColors: Record<keyof GraphFacetState, string> = {
+  documents: "var(--color-document)",
+  concepts: "var(--color-concept)",
+  arguments: "var(--color-argument)",
+  questions: "var(--color-question)",
+};
+
 export function FacetToggleGroup({ facets, onFacetChange, disabled = false }: FacetToggleGroupProps) {
   return (
-    <fieldset disabled={disabled}>
-      <legend>Visible node types</legend>
+    <fieldset className={styles.fieldset} disabled={disabled}>
+      <legend className={styles.legend}>Visible Node Types</legend>
       {facetKeys.map((facetKey) => (
-        <label key={facetKey}>
+        <label key={facetKey} className={styles.label}>
+          <span className={styles.colorDot} style={{ background: facetColors[facetKey] }} />
           <input
             type="checkbox"
             checked={facets[facetKey]}

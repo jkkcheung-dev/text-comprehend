@@ -1,3 +1,4 @@
+import styles from "./dashboard-shell.module.css";
 import type { DashboardData, DashboardDocument } from "../data/types";
 import { DetailPanelShell, type DetailSelection } from "./detail-panel-shell";
 import { FacetToggleGroup } from "./facet-toggle-group";
@@ -156,98 +157,116 @@ export function DashboardShell({
   const graphEmptyMessage = graphRenderMessage ?? defaultGraphEmptyMessage;
 
   return (
-    <main>
-      <header>
-        <h1>Text Comprehend</h1>
-        <div>
-          <SearchControls
-            query={searchQuery}
-            onQueryChange={onSearchQueryChange ?? (() => {})}
-            onReset={onResetSearch ?? (() => {})}
-            disabled={!hasSearchControls}
-          />
-        </div>
-        <div>
-          <SourceStatusBadge source={data.source} />
-          <p>{data.source.label}</p>
-        </div>
+    <div className={styles.app}>
+      <header className={styles.header}>
+        <span className={styles.logo}>Text Comprehend</span>
+        <SearchControls
+          query={searchQuery}
+          onQueryChange={onSearchQueryChange ?? (() => {})}
+          onReset={onResetSearch ?? (() => {})}
+          disabled={!hasSearchControls}
+        />
+        <span className={styles.headerSpacer} />
+        <SourceStatusBadge source={data.source} />
+        {data.source.mode === "workspace" && (
+          <span className={styles.headerLabel}>{data.source.workspaceRoot}</span>
+        )}
+        {data.state === "ready" && onRefresh && (
+          <button type="button" className={styles.headerRefresh} onClick={onRefresh}>
+            Refresh
+          </button>
+        )}
       </header>
 
-      <section>
-        <aside>
-          <h2>Documents</h2>
-          {data.state === "ready" ? (
-            <ul>
-              {visibleDocuments.map((document) => (
-                <li key={document.id}>
-                  <button
-                    type="button"
-                    aria-current={effectiveSelectedDocumentId === document.id ? "true" : undefined}
-                    onClick={() => onSelectDocument(document.id)}
-                  >
-                    {documentButtonLabels.get(document.id) ?? document.title}
-                  </button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Document list unavailable until dashboard data is ready.</p>
-          )}
-          <h2>Facet filters</h2>
-          <FacetToggleGroup
-            facets={facets}
-            onFacetChange={onFacetChange ?? (() => {})}
-            disabled={!hasFacetControls}
-          />
-          <h2>Source details</h2>
-          <p>{data.source.mode === "fixture" ? data.source.fixtureName : data.source.workspaceRoot}</p>
+      <div className={styles.body}>
+        <aside className={styles.sidebar}>
+          <div className={styles.sidebarSection}>
+            <h2 className={styles.sidebarTitle}>Documents</h2>
+            {data.state === "ready" ? (
+              <ul className={styles.documentList}>
+                {visibleDocuments.map((document) => (
+                  <li key={document.id}>
+                    <button
+                      type="button"
+                      className={styles.documentButton}
+                      aria-current={effectiveSelectedDocumentId === document.id ? "true" : undefined}
+                      onClick={() => onSelectDocument(document.id)}
+                    >
+                      {documentButtonLabels.get(document.id) ?? document.title}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className={styles.stateMessage}>Document list unavailable until dashboard data is ready.</p>
+            )}
+          </div>
+          <div className={styles.sidebarSection}>
+            <FacetToggleGroup
+              facets={facets}
+              onFacetChange={onFacetChange ?? (() => {})}
+              disabled={!hasFacetControls}
+            />
+          </div>
+          <div className={styles.sidebarFooter}>
+            <h2 className={styles.sidebarTitle}>Source</h2>
+            <p>{data.source.mode === "fixture" ? data.source.fixtureName : data.source.workspaceRoot}</p>
+          </div>
         </aside>
 
-        <section>
-          <h2>Graph canvas</h2>
-          {data.state === "ready" && viewState ? <p>Zoom: {viewState.zoom.toFixed(1)}x</p> : null}
-          {showPreviewNotice ? (
-            <p>Search, facet filters, and graph node selection will be available after app wiring lands.</p>
-          ) : null}
-          {refreshWarning ? <p role="status">{refreshWarning}</p> : null}
-          {refreshWarning && onRetry ? (
-            <button type="button" onClick={onRetry}>
-              Retry
-            </button>
-          ) : null}
-          {data.state === "loading" ? <p>Loading dashboard data...</p> : null}
-          {data.state === "empty" ? <p>Run /comprehend in your workspace to generate dashboard artifacts.</p> : null}
-          {data.state === "malformed" ? (
-            <div role="alert">
-              <p>Dashboard data could not be loaded</p>
-              <p>{data.path}</p>
-              <p>{data.error}</p>
-            </div>
-          ) : null}
-          {data.state === "ready" ? (
-            <>
-              {onRefresh ? (
-                <button type="button" onClick={onRefresh}>
-                  Refresh data
-                </button>
-              ) : null}
-              <GraphCanvas
-                nodes={visibleGraph?.nodes ?? []}
-                edges={visibleGraph?.visibleEdges ?? []}
-                matchedNodeIds={visibleGraph?.matchedNodeIds ?? []}
-                selectedNodeId={selectedNodeId}
-                onSelectNode={onSelectNode ?? (() => {})}
-                viewState={viewState}
-                onViewStateChange={onViewStateChange}
-                emptyMessage={graphEmptyMessage}
-                disabled={!hasGraphSelection}
-              />
-            </>
-          ) : null}
-        </section>
-      </section>
-
-      <DetailPanelShell document={selectedDocument} selectedNodeId={selectedNodeId} selection={effectiveDetailSelection} />
-    </main>
+        <div className={styles.mainContent}>
+          <div className={styles.graphArea}>
+            {refreshWarning && (
+              <div className={styles.warningBanner} role="status">
+                <span>{refreshWarning}</span>
+                {onRetry && <button type="button" onClick={onRetry}>Retry</button>}
+              </div>
+            )}
+            {data.state === "loading" && (
+              <p className={styles.stateMessage}>Loading dashboard data...</p>
+            )}
+            {data.state === "empty" && (
+              <p className={styles.stateMessage}>Run /comprehend in your workspace to generate dashboard artifacts.</p>
+            )}
+            {data.state === "malformed" && (
+              <div className={styles.errorAlert} role="alert">
+                <p>Dashboard data could not be loaded</p>
+                <p>{data.path}</p>
+                <p>{data.error}</p>
+              </div>
+            )}
+            {data.state === "ready" && (
+              <>
+                {onRefresh && (
+                  <button type="button" className={styles.refreshButton} onClick={onRefresh}>
+                    Refresh data
+                  </button>
+                )}
+                {showPreviewNotice && (
+                  <p className={styles.previewNotice}>
+                    Search, facet filters, and graph node selection will be available after app wiring lands.
+                  </p>
+                )}
+                {viewState && <p className={styles.zoomIndicator}>Zoom: {viewState.zoom.toFixed(1)}x</p>}
+                <GraphCanvas
+                  nodes={visibleGraph?.nodes ?? []}
+                  edges={visibleGraph?.visibleEdges ?? []}
+                  matchedNodeIds={visibleGraph?.matchedNodeIds ?? []}
+                  selectedNodeId={selectedNodeId}
+                  onSelectNode={onSelectNode ?? (() => {})}
+                  viewState={viewState}
+                  onViewStateChange={onViewStateChange}
+                  emptyMessage={graphEmptyMessage}
+                  disabled={!hasGraphSelection}
+                />
+              </>
+            )}
+          </div>
+          <div className={styles.detailArea}>
+            <DetailPanelShell document={selectedDocument} selectedNodeId={selectedNodeId} selection={effectiveDetailSelection} />
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

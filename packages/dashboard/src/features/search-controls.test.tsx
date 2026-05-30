@@ -27,7 +27,7 @@ describe("SearchControls", () => {
 
     render(<SearchControls query="event loop" onQueryChange={vi.fn()} onReset={onReset} />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Clear search" }));
+    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
 
     expect(onReset).toHaveBeenCalledTimes(1);
   });
@@ -36,6 +36,6 @@ describe("SearchControls", () => {
     render(<SearchControls query="event loop" onQueryChange={vi.fn()} onReset={vi.fn()} disabled />);
 
     expect(screen.getByRole("searchbox", { name: "Search graph" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Clear search" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Clear" })).toBeDisabled();
   });
 });
