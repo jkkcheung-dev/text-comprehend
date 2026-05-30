@@ -1,3 +1,4 @@
+import "./styles/reset.css";
 import { useEffect, useState } from "react";
 import { loadDashboardData } from "./data/load-dashboard-data";
 import type { DashboardData, DashboardSource } from "./data/types";
