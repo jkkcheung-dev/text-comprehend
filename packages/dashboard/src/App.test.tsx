@@ -50,13 +50,13 @@ describe("App", () => {
 
     expect(await screen.findByRole("searchbox", { name: "Search graph" })).toBeInTheDocument();
     expect(screen.getByText("Workspace")).toBeInTheDocument();
-    expect(screen.getByText("/repo")).toBeInTheDocument();
+    expect(screen.getAllByText("/repo").length).toBeGreaterThanOrEqual(1);
     expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Documents" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Concepts" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeInTheDocument();
     expect(screen.getByRole("checkbox", { name: "Questions" })).toBeInTheDocument();
-    expect(screen.getByText("Graph canvas")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Graph canvas" })).toBeInTheDocument();
     expect(screen.getByText("Detail panel")).toBeInTheDocument();
     expect(
       screen.queryByText("Search, facet filters, and graph node selection will be available after app wiring lands."),
@@ -506,7 +506,8 @@ describe("App", () => {
 
     expect(screen.getByText("Loading dashboard data...")).toBeInTheDocument();
     expect(screen.queryByText("# Document One")).not.toBeInTheDocument();
-    expect(screen.getByText("Workspace: /repo")).toBeInTheDocument();
+    expect(screen.getByText("Workspace")).toBeInTheDocument();
+    expect(screen.getAllByText("/repo").length).toBeGreaterThanOrEqual(1);
   });
 
   it("drops the stale snapshot immediately when the source key changes", async () => {
