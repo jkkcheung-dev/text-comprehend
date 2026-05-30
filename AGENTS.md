@@ -57,3 +57,6 @@
 
 ## Scope Notes
 - Ignore `docs/study/` and `.superpowers/` unless the task is explicitly about those directories.
+
+## Critical Convention on doing tasks
+- Must try to find any available skills before starting any task, choose the most suitable skill to do the task, if got any doubts, ask me to confirm.
