@@ -116,7 +116,7 @@ export function DetailPanelShell({ document, selectedNodeId, selection }: Detail
     }
     e.preventDefault();
     setActiveTab(TABS[nextIndex].key);
-    document.getElementById(`tab-${TABS[nextIndex].key}`)?.focus();
+    window.document.getElementById(`tab-${TABS[nextIndex].key}`)?.focus();
   };
 
   return (
