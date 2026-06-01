@@ -1,0 +1,26 @@
+{
+  "version": "1.0.0",
+  "lastRun": "2026-05-31T09:39:48.407Z",
+  "files": {
+    "sampleText.txt": {
+      "documentId": "262166fa833e",
+      "title": "Claude Code is running in production across multi-million-line monorepos, decades-old legacy systems, distributed architectures spanning dozens of repositories, and at organizations with thousands of developers. These environments present challenges that smaller, simpler codebases don’t, whether that’s build commands that differ across every subdirectory or legacy code spread across folders with no shared root.",
+      "fileHash": "b4b874979fe2241b68000b1d7cd6c48f66a008d48b012b16b66a1432e8f5bdd2",
+      "lastAnalyzed": "2026-05-31T09:39:48.407Z",
+      "facets": {
+        "summary": {
+          "status": "success"
+        },
+        "concepts": {
+          "status": "success"
+        },
+        "arguments": {
+          "status": "success"
+        },
+        "qa": {
+          "status": "success"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,258 @@
+{
+  "documentId": "262166fa833e",
+  "arguments": [
+    {
+      "id": "arg-main-harness",
+      "claim": "The tooling harness determines Claude Code performance more than the model alone.",
+      "type": "main",
+      "evidence": [
+        {
+          "content": "The ecosystem built around the model—the harness—determines how Claude Code performs more than the model alone.",
+          "type": "reasoning",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 15,
+            "endLine": 16,
+            "excerpt": "the harness—determines how Claude Code performs more than the model alone"
+          }
+        },
+        {
+          "content": "CLAUDE.md files give Claude the codebase knowledge it needs to do anything well.",
+          "type": "reasoning",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 19,
+            "endLine": 19,
+            "excerpt": "CLAUDE.md files come first"
+          }
+        },
+        {
+          "content": "Hooks enforce rules deterministically and produce more consistent results than relying on Claude to remember an instruction.",
+          "type": "example",
+          "strength": "moderate",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 21,
+            "endLine": 21,
+            "excerpt": "hooks enforce the rules deterministically"
+          }
+        }
+      ],
+      "assumptions": [
+        "The model alone cannot encode all team-specific conventions and infrastructure knowledge.",
+        "External tooling can reliably augment the model where it falls short."
+      ],
+      "gaps": [
+        "Does not quantify the relative performance impact of each harness layer versus model improvement."
+      ],
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 14,
+          "endLine": 35,
+          "excerpt": "The harness matters as much as the model"
+        }
+      ]
+    },
+    {
+      "id": "arg-agentic-vs-rag",
+      "claim": "Agentic search is superior to RAG-based approaches for large, actively developed codebases.",
+      "type": "supporting",
+      "evidence": [
+        {
+          "content": "At large scale, those systems can fail because embedding pipelines can't keep up with active engineering teams.",
+          "type": "reasoning",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 8,
+            "endLine": 9,
+            "excerpt": "embedding pipelines can't keep up with active engineering teams"
+          }
+        },
+        {
+          "content": "Retrieval then returns a function the team renamed two weeks ago, or references a module that was deleted in the last sprint.",
+          "type": "example",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 9,
+            "endLine": 9,
+            "excerpt": "returns a function the team renamed two weeks ago"
+          }
+        },
+        {
+          "content": "Agentic search avoids those failure modes. There's no embedding pipeline or centralized index to maintain.",
+          "type": "reasoning",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 10,
+            "endLine": 10,
+            "excerpt": "Agentic search avoids those failure modes"
+          }
+        }
+      ],
+      "assumptions": [
+        "Engineering velocity outpaces embedding pipeline refresh rates in large codebases.",
+        "Live filesystem access is sufficiently fast for Claude's navigation patterns."
+      ],
+      "gaps": [
+        "Does not address the tradeoff of context window limits on agentic search breadth."
+      ],
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 8,
+          "endLine": 12,
+          "excerpt": "RAG-powered AI coding tools work by embedding"
+        }
+      ]
+    },
+    {
+      "id": "arg-config-maintenance",
+      "claim": "Teams must actively review and prune their Claude Code configuration as models improve, or old instructions will degrade performance.",
+      "type": "main",
+      "evidence": [
+        {
+          "content": "CLAUDE.md files that guided Claude through patterns it used to struggle with may either become unnecessary or actively constraining when the next model ships.",
+          "type": "example",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 52,
+            "endLine": 52,
+            "excerpt": "may either become unnecessary or actively constraining"
+          }
+        },
+        {
+          "content": "Skills and hooks built to compensate for specific model limitations become overhead once those limitations no longer exist.",
+          "type": "reasoning",
+          "strength": "moderate",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 54,
+            "endLine": 54,
+            "excerpt": "become overhead once those limitations no longer exist"
+          }
+        }
+      ],
+      "assumptions": [
+        "Model capabilities improve meaningfully across releases.",
+        "Configuration drift is harmful enough to warrant periodic review."
+      ],
+      "gaps": [
+        "Does not provide a methodology for evaluating which rules have become obsolete."
+      ],
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 51,
+          "endLine": 56,
+          "excerpt": "Actively maintaining CLAUDE.md files"
+        }
+      ]
+    },
+    {
+      "id": "arg-organizational-ownership",
+      "claim": "A dedicated organizational owner is necessary to sustain adoption and prevent configuration fragmentation.",
+      "type": "supporting",
+      "evidence": [
+        {
+          "content": "The rollouts that spread fastest had a dedicated infrastructure investment before broad access.",
+          "type": "example",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 61,
+            "endLine": 61,
+            "excerpt": "dedicated infrastructure investment before broad access"
+          }
+        },
+        {
+          "content": "Bottoms-up adoption generates enthusiasm but can fragment without someone to centralize what works.",
+          "type": "reasoning",
+          "strength": "moderate",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 65,
+            "endLine": 65,
+            "excerpt": "can fragment without someone to centralize what works"
+          }
+        },
+        {
+          "content": "Without that work, knowledge will stay tribal and adoption will plateau.",
+          "type": "reasoning",
+          "strength": "moderate",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 65,
+            "endLine": 65,
+            "excerpt": "knowledge will stay tribal and adoption will plateau"
+          }
+        }
+      ],
+      "assumptions": [
+        "Configuration management is complex enough to require dedicated attention.",
+        "Tribal knowledge patterns apply to AI tooling as they do to other engineering practices."
+      ],
+      "gaps": [
+        "Does not address the resource cost of a dedicated role for smaller organizations."
+      ],
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 58,
+          "endLine": 67,
+          "excerpt": "Assigning ownership for Claude Code management"
+        }
+      ]
+    },
+    {
+      "id": "arg-lsp-value",
+      "claim": "LSP integration is one of the highest-value investments for making Claude Code work reliably in multi-language codebases.",
+      "type": "supporting",
+      "evidence": [
+        {
+          "content": "Without it, Claude pattern-matches on text and can land on the wrong symbol.",
+          "type": "reasoning",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 31,
+            "endLine": 31,
+            "excerpt": "can land on the wrong symbol"
+          }
+        },
+        {
+          "content": "One enterprise software company deployed LSP integrations org-wide before their Claude Code rollout, specifically to make C and C++ navigation reliable.",
+          "type": "example",
+          "strength": "strong",
+          "sourceRef": {
+            "documentId": "262166fa833e",
+            "startLine": 31,
+            "endLine": 31,
+            "excerpt": "deployed LSP integrations org-wide before their Claude Code rollout"
+          }
+        }
+      ],
+      "assumptions": [
+        "Text-based grep is insufficient for symbol disambiguation in large codebases.",
+        "LSP infrastructure is available and maintainable for the languages in use."
+      ],
+      "gaps": [
+        "Does not discuss the setup cost or languages where LSP support may be limited."
+      ],
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 31,
+          "endLine": 31,
+          "excerpt": "Language server protocol (LSP) integrations"
+        }
+      ]
+    }
+  ]
+}

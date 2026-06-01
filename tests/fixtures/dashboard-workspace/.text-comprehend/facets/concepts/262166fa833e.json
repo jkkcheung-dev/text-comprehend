@@ -1,0 +1,257 @@
+{
+  "documentId": "262166fa833e",
+  "concepts": [
+    {
+      "id": "concept-agentic-search",
+      "name": "Agentic Search",
+      "definition": "A code navigation approach where Claude traverses the file system, reads files, uses grep, and follows references like a human engineer, without requiring a pre-built codebase index.",
+      "importance": "core",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 5,
+          "endLine": 12,
+          "excerpt": "Claude Code navigates a codebase the way a software engineer would"
+        }
+      ]
+    },
+    {
+      "id": "concept-rag",
+      "name": "RAG (Retrieval-Augmented Generation)",
+      "definition": "An AI coding tool approach that embeds the entire codebase and retrieves relevant chunks at query time, which can fail at scale when embedding pipelines fall behind active engineering.",
+      "importance": "core",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 8,
+          "endLine": 10,
+          "excerpt": "RAG-powered AI coding tools work by embedding the entire codebase"
+        }
+      ]
+    },
+    {
+      "id": "concept-harness",
+      "name": "Tooling Harness",
+      "definition": "The ecosystem built around the AI model—CLAUDE.md files, hooks, skills, plugins, and MCP servers—that determines Claude Code's real-world performance more than the model alone.",
+      "importance": "core",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 14,
+          "endLine": 17,
+          "excerpt": "The harness matters as much as the model"
+        }
+      ]
+    },
+    {
+      "id": "concept-claude-md",
+      "name": "CLAUDE.md Files",
+      "definition": "Context files that Claude reads automatically at the start of every session, providing codebase knowledge. Root file for big-picture context, subdirectory files for local conventions. They should be lean, focused, and layered.",
+      "importance": "core",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 19,
+          "endLine": 19,
+          "excerpt": "CLAUDE.md files come first"
+        },
+        {
+          "documentId": "262166fa833e",
+          "startLine": 43,
+          "endLine": 43,
+          "excerpt": "Keeping CLAUDE.md files lean and layered"
+        }
+      ]
+    },
+    {
+      "id": "concept-hooks",
+      "name": "Hooks",
+      "definition": "Scripts that run at session start or stop to enforce rules, automate checks, and enable self-improvement by proposing CLAUDE.md updates based on session activity.",
+      "importance": "supporting",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 21,
+          "endLine": 21,
+          "excerpt": "Hooks make the setup self-improving"
+        }
+      ]
+    },
+    {
+      "id": "concept-skills",
+      "name": "Skills",
+      "definition": "On-demand expertise workflows loaded via progressive disclosure, enabling specialized knowledge to be available only when needed without bloating every session. Can be scoped to specific paths.",
+      "importance": "supporting",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 23,
+          "endLine": 25,
+          "excerpt": "Skills keep the right expertise available on-demand"
+        }
+      ]
+    },
+    {
+      "id": "concept-plugins",
+      "name": "Plugins",
+      "definition": "Bundled packages of skills, hooks, and MCP configurations that distribute proven setups across teams so new engineers get the same capabilities on day one.",
+      "importance": "supporting",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 27,
+          "endLine": 29,
+          "excerpt": "Plugins distribute what works"
+        }
+      ]
+    },
+    {
+      "id": "concept-mcp",
+      "name": "MCP Servers",
+      "definition": "Model Context Protocol servers that connect Claude to internal tools, data sources, documentation, ticketing systems, and APIs that it cannot otherwise reach.",
+      "importance": "supporting",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 33,
+          "endLine": 33,
+          "excerpt": "MCP servers extend everything"
+        }
+      ]
+    },
+    {
+      "id": "concept-lsp",
+      "name": "Language Server Protocol (LSP) Integration",
+      "definition": "Integration that gives Claude symbol-level code navigation—go to definition, find all references—providing precision beyond text pattern matching, especially critical for C and C++ codebases.",
+      "importance": "supporting",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 31,
+          "endLine": 31,
+          "excerpt": "Language server protocol (LSP) integrations"
+        }
+      ]
+    },
+    {
+      "id": "concept-subagents",
+      "name": "Subagents",
+      "definition": "Isolated Claude instances with their own context windows that perform tasks and return only final results to the parent agent, enabling separation of exploration from editing.",
+      "importance": "supporting",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 35,
+          "endLine": 35,
+          "excerpt": "Subagents split exploration from editing"
+        }
+      ]
+    },
+    {
+      "id": "concept-progressive-disclosure",
+      "name": "Progressive Disclosure",
+      "definition": "A design pattern where specialized expertise is loaded only when needed, preventing context bloat while keeping capabilities available.",
+      "importance": "peripheral",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 23,
+          "endLine": 23,
+          "excerpt": "Skills solve this through progressive disclosure"
+        }
+      ]
+    },
+    {
+      "id": "concept-agent-manager",
+      "name": "Agent Manager",
+      "definition": "An emerging hybrid PM/engineer role dedicated to managing the Claude Code ecosystem—configuration, permissions, plugins, and CLAUDE.md conventions.",
+      "importance": "peripheral",
+      "sourceRefs": [
+        {
+          "documentId": "262166fa833e",
+          "startLine": 63,
+          "endLine": 63,
+          "excerpt": "An emerging role in several organizations is an agent manager"
+        }
+      ]
+    }
+  ],
+  "relationships": [
+    {
+      "source": "concept-harness",
+      "target": "concept-claude-md",
+      "type": "defines",
+      "label": "foundation layer",
+      "weight": 1
+    },
+    {
+      "source": "concept-harness",
+      "target": "concept-hooks",
+      "type": "defines",
+      "label": "automation layer",
+      "weight": 0.9
+    },
+    {
+      "source": "concept-harness",
+      "target": "concept-skills",
+      "type": "defines",
+      "label": "expertise layer",
+      "weight": 0.9
+    },
+    {
+      "source": "concept-harness",
+      "target": "concept-plugins",
+      "type": "defines",
+      "label": "distribution layer",
+      "weight": 0.8
+    },
+    {
+      "source": "concept-harness",
+      "target": "concept-mcp",
+      "type": "defines",
+      "label": "connectivity layer",
+      "weight": 0.8
+    },
+    {
+      "source": "concept-skills",
+      "target": "concept-progressive-disclosure",
+      "type": "exemplifies",
+      "weight": 0.7
+    },
+    {
+      "source": "concept-plugins",
+      "target": "concept-skills",
+      "type": "depends_on",
+      "label": "bundles skills",
+      "weight": 0.8
+    },
+    {
+      "source": "concept-agentic-search",
+      "target": "concept-rag",
+      "type": "contradicts",
+      "label": "avoids embedding staleness",
+      "weight": 0.8
+    },
+    {
+      "source": "concept-lsp",
+      "target": "concept-agentic-search",
+      "type": "supports",
+      "label": "adds symbol precision",
+      "weight": 0.7
+    },
+    {
+      "source": "concept-subagents",
+      "target": "concept-agentic-search",
+      "type": "supports",
+      "label": "isolates exploration",
+      "weight": 0.6
+    },
+    {
+      "source": "concept-plugins",
+      "target": "concept-agent-manager",
+      "type": "depends_on",
+      "label": "managed distribution",
+      "weight": 0.5
+    }
+  ]
+}
