@@ -26,7 +26,12 @@ describe("scanDirectory", () => {
   });
 
   it("discovers supported text files", async () => {
-    const result = await scanDirectory(FIXTURES_DIR);
+    await mkdir(join(tempRoot, "subdir"), { recursive: true });
+    await writeFile(join(tempRoot, "doc-1.md"), "# Title\n\nContent.", "utf-8");
+    await writeFile(join(tempRoot, "doc-2.txt"), "Content line 1\nContent line 2\n", "utf-8");
+    await writeFile(join(tempRoot, "subdir/doc-3.md"), "# Nested\n\nTest.", "utf-8");
+
+    const result = await scanDirectory(tempRoot);
     const paths = result.files.map((f: any) => f.relativePath).sort();
 
     expect(paths).toContain("doc-1.md");
@@ -57,7 +62,9 @@ describe("scanDirectory", () => {
   });
 
   it("skips binary document types (pdf, docx) with appropriate reason", async () => {
-    const result = await scanDirectory(FIXTURES_DIR);
+    await writeFile(join(tempRoot, "report.pdf"), "%PDF-1.4 fake binary content for testing", "utf-8");
+
+    const result = await scanDirectory(tempRoot);
     const paths = result.files.map((f: any) => f.relativePath);
 
     expect(paths).not.toContain("report.pdf");
@@ -86,7 +93,9 @@ describe("scanDirectory", () => {
   });
 
   it("skips empty files with appropriate reason", async () => {
-    const result = await scanDirectory(FIXTURES_DIR);
+    await writeFile(join(tempRoot, "empty.md"), "", "utf-8");
+
+    const result = await scanDirectory(tempRoot);
     const paths = result.files.map((f: any) => f.relativePath);
 
     expect(paths).not.toContain("empty.md");
