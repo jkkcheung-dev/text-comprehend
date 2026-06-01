@@ -48,22 +48,23 @@ describe("loadDashboardData", () => {
         version: "1.0.0",
         documents: [
           {
-            id: "doc-1",
-            title: "Document One",
+            id: "262166fa833e",
+            title: expect.stringContaining("Claude Code is running"),
+            fileType: "txt",
           },
         ],
       },
       documents: [
         {
-          id: "doc-1",
-          title: "Document One",
+          id: "262166fa833e",
+          title: expect.stringContaining("Claude Code is running"),
           detail: {
             state: "available",
             simplified: {
-              layeredSummary: expect.stringContaining("# Document One"),
-              conceptGlossary: expect.stringContaining("# Concept Glossary: Document One"),
-              argumentMap: expect.stringContaining("# Argument Map: Document One"),
-              comprehensionCheck: expect.stringContaining("# Comprehension Check: Document One"),
+              layeredSummary: expect.stringContaining("# Claude Code is running"),
+              conceptGlossary: expect.stringContaining("# Concept Glossary: Claude Code"),
+              argumentMap: expect.stringContaining("# Argument Map: Claude Code"),
+              comprehensionCheck: expect.stringContaining("# Comprehension Check: Claude Code"),
             },
           },
         },
@@ -146,11 +147,11 @@ describe("loadDashboardData", () => {
       state: "ready",
       documents: [
         {
-          id: "doc-1",
+          id: "262166fa833e",
           detail: {
             state: "available",
             simplified: {
-              layeredSummary: expect.stringContaining("# Document One"),
+              layeredSummary: expect.stringContaining("# Claude Code is running"),
             },
           },
         },
