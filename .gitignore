@@ -6,3 +6,10 @@ dist/
 !tests/fixtures/**/.text-comprehend/**
 .worktrees/
 .opencode/skills/ui-ux-pro-max/**
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+/playwright/.auth/
