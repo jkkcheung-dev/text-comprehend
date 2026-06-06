@@ -15,10 +15,13 @@
   },
   "dependencies": {
     "@dagrejs/dagre": "^3.0.0",
+    "@tailwindcss/vite": "^4.3.0",
     "@text-comprehend/core": "0.1.0",
     "@xyflow/react": "^12.10.2",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "tailwindcss": "^4.3.0",
+    "zustand": "^4.5.7"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",
