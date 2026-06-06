@@ -33,7 +33,7 @@ import { GraphCanvas } from "./graph-canvas";
 import type { GraphEdgeRecord, GraphNodeRecord } from "./graph-view-model";
 
 function createNode(id: string, label: string, kind: GraphNodeRecord["kind"] = "concept", documentId = "doc-1"): GraphNodeRecord {
-  return { id, rawId: id.split(":")[2] ?? id, kind, label, searchText: label.toLowerCase(), documentId };
+  return { id, rawId: id.split(":")[2] ?? id, kind, label, searchText: label.toLowerCase(), documentId, dimmed: false, highlighted: false };
 }
 
 function createEdge(source: string, target: string, type = "defines" as const): GraphEdgeRecord {

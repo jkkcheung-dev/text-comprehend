@@ -40,8 +40,14 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(model.nodes.map((node) => node.id)).toContain("doc-1:concept:concept-1");
-    expect(model.matchedNodeIds).toContain("doc-1:concept:concept-1");
+    expect(model.nodes).toHaveLength(4);
+    expect(model.nodes.filter((n) => n.highlighted).map((n) => n.id)).toEqual(["doc-1:concept:concept-1"]);
+    expect(model.nodes.filter((n) => n.dimmed).map((n) => n.id)).toEqual([
+      "doc-1:document:doc-1",
+      "doc-1:argument:argument-1",
+      "doc-1:question:question-1",
+    ]);
+    expect(model.matchedNodeIds).toEqual(["doc-1:concept:concept-1"]);
     expect(model.visibleEdges).toContainEqual({
       source: "doc-1:document:doc-1",
       target: "doc-1:concept:concept-1",
@@ -78,10 +84,16 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(model.nodes.map((node) => node.id)).toEqual([
+    expect(model.nodes).toHaveLength(6);
+    expect(model.nodes.filter((n) => n.highlighted).map((n) => n.id)).toEqual(["doc-1:concept:concept-1"]);
+    expect(model.nodes.filter((n) => n.dimmed).map((n) => n.id)).toEqual([
       "doc-1:document:doc-1",
-      "doc-1:concept:concept-1",
+      "doc-2:document:doc-2",
+      "doc-2:concept:concept-2",
+      "doc-2:argument:argument-1",
+      "doc-2:question:question-1",
     ]);
+    expect(model.matchedNodeIds).toEqual(["doc-1:concept:concept-1"]);
     expect(model.visibleEdges).toEqual([
       {
         source: "doc-1:document:doc-1",
@@ -124,10 +136,13 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(conceptModel.nodes.map((node) => node.id)).toEqual([
+    expect(conceptModel.nodes).toHaveLength(5);
+    expect(conceptModel.nodes.filter((n) => n.highlighted).map((n) => n.id)).toEqual(["doc-1:concept:concept-2"]);
+    expect(conceptModel.nodes.filter((n) => n.dimmed).map((n) => n.id)).toEqual([
       "doc-1:document:doc-1",
       "doc-1:concept:concept-1",
-      "doc-1:concept:concept-2",
+      "doc-1:argument:argument-1",
+      "doc-1:argument:argument-2",
     ]);
     expect(sortEdges(conceptModel.visibleEdges)).toEqual(sortEdges([
       {
@@ -158,10 +173,13 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(argumentModel.nodes.map((node) => node.id)).toEqual([
+    expect(argumentModel.nodes).toHaveLength(5);
+    expect(argumentModel.nodes.filter((n) => n.highlighted).map((n) => n.id)).toEqual(["doc-1:argument:argument-2"]);
+    expect(argumentModel.nodes.filter((n) => n.dimmed).map((n) => n.id)).toEqual([
       "doc-1:document:doc-1",
+      "doc-1:concept:concept-1",
+      "doc-1:concept:concept-2",
       "doc-1:argument:argument-1",
-      "doc-1:argument:argument-2",
     ]);
     expect(sortEdges(argumentModel.visibleEdges)).toEqual(sortEdges([
       {
@@ -225,10 +243,16 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(model.nodes.map((node) => `${node.kind}:${node.documentId}:${node.rawId}`)).toEqual([
-      "document:doc-1:doc-1",
+    expect(model.nodes).toHaveLength(6);
+    expect(model.nodes.filter((n) => n.highlighted).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
       "concept:doc-1:concept-1",
+    ]);
+    expect(model.nodes.filter((n) => n.dimmed).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
+      "document:doc-1:doc-1",
       "concept:doc-1:concept-2",
+      "document:doc-2:doc-2",
+      "concept:doc-2:concept-1",
+      "concept:doc-2:concept-3",
     ]);
     expect(sortEdges(model.visibleEdges)).toEqual(sortEdges([
       {
@@ -291,10 +315,16 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(model.nodes.map((node) => `${node.kind}:${node.documentId}:${node.rawId}`)).toEqual([
-      "document:doc-1:doc-1",
+    expect(model.nodes).toHaveLength(6);
+    expect(model.nodes.filter((n) => n.highlighted).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
       "concept:doc-1:concept-1",
+    ]);
+    expect(model.nodes.filter((n) => n.dimmed).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
+      "document:doc-1:doc-1",
       "concept:doc-1:concept-2",
+      "document:doc-2:doc-2",
+      "concept:doc-2:concept-1",
+      "concept:doc-2:concept-2",
     ]);
     expect(sortEdges(model.visibleEdges)).toEqual(sortEdges([
       {
@@ -435,9 +465,14 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(model.nodes.map((node) => `${node.kind}:${node.documentId}:${node.rawId}`)).toEqual([
-      "document:doc-1:doc-1",
+    expect(model.nodes).toHaveLength(4);
+    expect(model.nodes.filter((n) => n.highlighted).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
       "concept:doc-1:shared-node",
+    ]);
+    expect(model.nodes.filter((n) => n.dimmed).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
+      "document:doc-1:doc-1",
+      "argument:doc-1:argument-1",
+      "document:shared-node:shared-node",
     ]);
   });
 
@@ -462,9 +497,14 @@ describe("graph-view-model", () => {
       facets: createDefaultFacetState(),
     });
 
-    expect(model.nodes.map((node) => `${node.kind}:${node.documentId}:${node.rawId}`)).toEqual([
-      "document:doc-1:doc-1",
+    expect(model.nodes).toHaveLength(4);
+    expect(model.nodes.filter((n) => n.highlighted).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
       "question:doc-1:shared-node",
+    ]);
+    expect(model.nodes.filter((n) => n.dimmed).map((n) => `${n.kind}:${n.documentId}:${n.rawId}`)).toEqual([
+      "document:doc-1:doc-1",
+      "concept:doc-1:shared-node",
+      "argument:doc-1:argument-1",
     ]);
     expect(sortEdges(model.visibleEdges)).toEqual(sortEdges([
       {

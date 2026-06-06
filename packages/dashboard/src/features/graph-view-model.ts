@@ -15,6 +15,8 @@ export type GraphNodeRecord = {
   label: string;
   searchText: string;
   documentId: string;
+  dimmed: boolean;
+  highlighted: boolean;
 };
 
 export type GraphEdgeRecord = Edge & {
@@ -73,7 +75,7 @@ export function buildGraphViewModel(
   const normalizedQuery = options.searchQuery.trim().toLowerCase();
   const matchedNodeIds = normalizedQuery
     ? nodes.filter((node) => node.searchText.includes(normalizedQuery)).map((node) => node.id)
-    : nodes.map((node) => node.id);
+    : [];
   const visibleNodeIds = normalizedQuery
     ? getSearchWorkingSet(
         matchedNodeIds,
@@ -83,7 +85,11 @@ export function buildGraphViewModel(
         relationshipEdgeOwners,
       )
     : new Set(nodes.map((node) => node.id));
-  const visibleNodes = nodes.filter((node) => visibleNodeIds.has(node.id));
+  const allNodes = nodes.map((node) => ({
+    ...node,
+    dimmed: normalizedQuery !== "" && !matchedNodeIds.includes(node.id),
+    highlighted: normalizedQuery !== "" && matchedNodeIds.includes(node.id),
+  }));
   const visibleEdges = buildVisibleEdges(
     data.graph.edges,
     visibleNodeIds,
@@ -92,7 +98,7 @@ export function buildGraphViewModel(
     relationshipEdgeOwners,
   );
 
-  return { nodes: visibleNodes, matchedNodeIds, visibleEdges };
+  return { nodes: allNodes, matchedNodeIds, visibleEdges };
 }
 
 export function getSelectedDocumentId(
@@ -148,6 +154,8 @@ function flattenDocument(document: DashboardDocument, facets: GraphFacetState): 
       label: document.title,
       searchText: `${document.title} ${document.filePath}`.toLowerCase(),
       documentId: document.id,
+      dimmed: false,
+      highlighted: false,
     });
   }
 
@@ -160,6 +168,8 @@ function flattenDocument(document: DashboardDocument, facets: GraphFacetState): 
         label: concept.name,
         searchText: `${concept.name} ${concept.definition}`.toLowerCase(),
         documentId: document.id,
+        dimmed: false,
+        highlighted: false,
       })),
     );
   }
@@ -173,6 +183,8 @@ function flattenDocument(document: DashboardDocument, facets: GraphFacetState): 
         label: argument.claim,
         searchText: `${argument.claim} ${argument.assumptions.join(" ")} ${argument.gaps.join(" ")}`.toLowerCase(),
         documentId: document.id,
+        dimmed: false,
+        highlighted: false,
       })),
     );
   }
@@ -186,6 +198,8 @@ function flattenDocument(document: DashboardDocument, facets: GraphFacetState): 
         label: question.question,
         searchText: `${question.question} ${question.answer}`.toLowerCase(),
         documentId: document.id,
+        dimmed: false,
+        highlighted: false,
       })),
     );
   }
