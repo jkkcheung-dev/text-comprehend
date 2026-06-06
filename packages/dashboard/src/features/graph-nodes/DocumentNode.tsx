@@ -1,31 +1,17 @@
-import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
+import { Handle, Position, type Node } from "@xyflow/react";
 
-type DocumentNodeType = Node<{ label: string }, "document">;
+type DocumentNodeData = { label: string; kind: string; documentId: string };
 
-export function DocumentNode({ data, selected }: NodeProps<DocumentNodeType>) {
-  const borderColor = selected ? "var(--color-primary-light)" : "var(--color-document)";
+export function DocumentNode({ data, selected }: { data: DocumentNodeData; selected: boolean }) {
   return (
-    <div
-      style={{
-        background: "var(--color-surface)",
-        borderTop: `2px solid ${borderColor}`,
-        borderRight: `2px solid ${borderColor}`,
-        borderBottom: `2px solid ${borderColor}`,
-        borderLeft: `3px solid var(--color-document)`,
-        borderRadius: "var(--radius-md)",
-        padding: "10px 14px",
-        boxShadow: "var(--shadow-md)",
-        maxWidth: 220,
-        fontSize: "var(--text-sm)",
-      }}
-    >
+    <div className={`bg-surface-canvas border rounded-md py-2.5 px-4 max-w-[220px] ${selected ? "border-accent-primary shadow-[0_0_12px_rgba(59,130,246,0.2)]" : "border-border-default"} shadow-[0_2px_8px_rgba(0,0,0,0.5)]`}
+      style={{ borderTopColor: selected ? "var(--color-accent-primary)" : "var(--color-facet-document)", borderTopWidth: 2, borderTopStyle: "solid" }}>
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Left} />
-      <div style={{ fontWeight: 600, color: "var(--color-primary-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {data.label}
-      </div>
-      <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-        document
+      <div className="font-mono text-[13px] font-semibold text-text-primary truncate">{data.label}</div>
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: "var(--color-facet-document)" }} />
+        <span className="text-[11px] text-text-muted font-sans">document</span>
       </div>
     </div>
   );
