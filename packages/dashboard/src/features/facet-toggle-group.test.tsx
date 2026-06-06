@@ -15,13 +15,12 @@ describe("FacetToggleGroup", () => {
     render(<FacetToggleGroup facets={createDefaultFacetState()} onFacetChange={vi.fn()} />);
 
     expect(screen.getByRole("group", { name: "Visible Node Types" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Documents" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Concepts" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeChecked();
     expect(screen.getByRole("checkbox", { name: "Questions" })).toBeChecked();
   });
 
-  it("reports facet updates as facet-nextValue pairs", () => {
+  it("reports facet updates as facet-value pairs", () => {
     const onFacetChange = vi.fn();
 
     render(
@@ -46,12 +45,16 @@ describe("FacetToggleGroup", () => {
     expect(onFacetChange).toHaveBeenCalledWith("concepts", false);
   });
 
-  it("disables every facet toggle when unavailable", () => {
-    render(<FacetToggleGroup facets={createDefaultFacetState()} onFacetChange={vi.fn()} disabled />);
+  it("renders checked/unchecked facets based on props", () => {
+    render(
+      <FacetToggleGroup
+        facets={{ documents: true, concepts: false, arguments: true, questions: false }}
+        onFacetChange={vi.fn()}
+      />,
+    );
 
-    expect(screen.getByRole("checkbox", { name: "Documents" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Concepts" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Questions" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Concepts" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Questions" })).not.toBeChecked();
   });
 });

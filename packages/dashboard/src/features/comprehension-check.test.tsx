@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { describe, it, expect, afterEach } from "vitest";
 import { cleanup, render, screen, fireEvent } from "@testing-library/react";
+import "@testing-library/jest-dom/vitest";
 import { ComprehensionCheck } from "./comprehension-check";
 import { createQuestion } from "../test/factories";
 
@@ -17,14 +18,14 @@ describe("ComprehensionCheck", () => {
 
   it("renders all questions", () => {
     render(<ComprehensionCheck questions={questions} />);
-    expect(screen.getByText("What is modularity?", { exact: false })).toBeDefined();
-    expect(screen.getByText("Why use modules?", { exact: false })).toBeDefined();
-    expect(screen.getByText("What is coupling?", { exact: false })).toBeDefined();
+    expect(screen.getByText("What is modularity?", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Why use modules?", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("What is coupling?", { exact: false })).toBeInTheDocument();
   });
 
   it("shows question count and difficulty summary", () => {
     render(<ComprehensionCheck questions={questions} />);
-    expect(screen.getByText(/3 questions/)).toBeDefined();
+    expect(screen.getByText(/3 questions/)).toBeInTheDocument();
   });
 
   it("answers are hidden by default", () => {
@@ -36,7 +37,7 @@ describe("ComprehensionCheck", () => {
     render(<ComprehensionCheck questions={questions} />);
     const buttons = screen.getAllByText("Show Answer");
     fireEvent.click(buttons[0]);
-    expect(screen.getByText("Answer")).toBeDefined();
+    expect(screen.getByText("Answer")).toBeInTheDocument();
   });
 
   it("hides answer on Hide Answer click", async () => {
@@ -46,7 +47,7 @@ describe("ComprehensionCheck", () => {
     expect(screen.queryByText("Answer")).toBeNull();
   });
 
-  it("Show All Answers reveals all", async () => {
+  it("Show All reveals all answers", async () => {
     render(<ComprehensionCheck questions={questions} />);
     fireEvent.click(screen.getByText("Show All"));
     expect(screen.getAllByText("Answer").length).toBe(3);
@@ -66,6 +67,6 @@ describe("ComprehensionCheck", () => {
 
   it("shows empty message when no questions", () => {
     render(<ComprehensionCheck questions={[]} />);
-    expect(screen.getByText(/No comprehension questions/)).toBeDefined();
+    expect(screen.getByText(/No comprehension questions/)).toBeInTheDocument();
   });
 });

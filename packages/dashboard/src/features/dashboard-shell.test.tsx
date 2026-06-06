@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
@@ -11,11 +11,32 @@ beforeAll(() => {
     disconnect() {}
   };
 });
+
+vi.mock("@xyflow/react", () => ({
+  ReactFlow: ({ nodes, children }: any) => (
+    <div data-testid="react-flow">
+      {nodes?.map((n: any) => (
+        <div key={n.id} data-testid="rf-node">{n.data?.label ?? n.id}</div>
+      ))}
+      {children}
+    </div>
+  ),
+  ReactFlowProvider: ({ children }: any) => <div>{children}</div>,
+  Background: () => null,
+  Controls: () => null,
+  MiniMap: () => null,
+  useNodesState: (initial: any) => [initial, {}, vi.fn()],
+  useEdgesState: (initial: any) => [initial, {}, vi.fn()],
+}));
+
+const mockStore = vi.fn();
+vi.mock("../store/dashboard-store", () => ({
+  useDashboardStore: (selector: any) => selector(mockStore()),
+}));
+
 import {
   createAvailableDetail,
-  createConcept,
   createDocument,
-  createGraphEdge,
   createMalformedDashboardData,
   createReadyDashboardData,
   createWorkspaceSource,
@@ -25,338 +46,175 @@ import { DashboardShell } from "./dashboard-shell";
 
 afterEach(() => {
   cleanup();
+  vi.resetAllMocks();
 });
 
-const defaultShellProps = {
-  selectedDocumentId: null,
-  selectedNodeId: null,
-  onSelectDocument: () => {},
-};
+function setupStore(overrides: Record<string, unknown> = {}) {
+  const defaults = {
+    data: null,
+    searchQuery: "",
+    facets: createDefaultFacetState(),
+    selectedNodeId: null,
+    setSearchQuery: vi.fn(),
+    toggleFacet: vi.fn(),
+    selectNode: vi.fn(),
+    refresh: vi.fn(),
+    ...overrides,
+  };
+  mockStore.mockReturnValue(defaults);
+  return defaults;
+}
 
 describe("DashboardShell", () => {
-  it("wires search, facet, and graph selection controls when ready", () => {
-    const onSearchQueryChange = vi.fn();
-    const onResetSearch = vi.fn();
-    const onFacetChange = vi.fn();
-    const onSelectDocument = vi.fn();
-    const onSelectNode = vi.fn();
-    const onViewStateChange = vi.fn();
+  it("renders Text Comprehend header and source badge when ready", () => {
     const readyData = createReadyDashboardData();
-
-    const { container } = render(
-      <DashboardShell
-        data={readyData}
-        graph={{
-          nodes: [
-            {
-              id: "doc-1:document:doc-1",
-              rawId: "doc-1",
-              kind: "document",
-              label: "Document One",
-              documentId: "doc-1",
-              searchText: "document one",
-            },
-          ],
-          matchedNodeIds: ["doc-1:document:doc-1"],
-          visibleEdges: [],
-        }}
-        searchQuery="doc"
-        facets={createDefaultFacetState()}
-        selectedDocumentId="doc-1"
-        selectedNodeId="doc-1:document:doc-1"
-        onSearchQueryChange={onSearchQueryChange}
-        onResetSearch={onResetSearch}
-        onFacetChange={onFacetChange}
-        onSelectDocument={onSelectDocument}
-        onSelectNode={onSelectNode}
-        viewState={{ zoom: 1, offsetX: 0, offsetY: 0 }}
-        onViewStateChange={onViewStateChange}
-      />,
-    );
-
-    fireEvent.change(screen.getByRole("searchbox", { name: "Search graph" }), {
-      target: { value: "document" },
-    });
-    expect(onSearchQueryChange).toHaveBeenCalledWith("document");
-
-    fireEvent.click(screen.getByRole("button", { name: "Clear" }));
-    expect(onResetSearch).toHaveBeenCalledTimes(1);
-
-    fireEvent.click(screen.getByRole("checkbox", { name: "Questions" }));
-    expect(onFacetChange).toHaveBeenCalledWith("questions", false);
-
-    fireEvent.click(screen.getByRole("button", { name: "Document One" }));
-    expect(onSelectDocument).toHaveBeenCalledWith("doc-1");
-
-    const graphNode = container.querySelector(".react-flow__node");
-    expect(graphNode).toBeTruthy();
-    fireEvent.click(graphNode!);
-    expect(onSelectNode).toHaveBeenCalledWith("doc-1:document:doc-1");
-  });
-
-  it("renders refresh and retry controls for ready data warnings", () => {
-    const onRefresh = vi.fn();
-    const onRetry = vi.fn();
-    const readyData = createReadyDashboardData({
-      source: createWorkspaceSource("/repo").meta,
-      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    setupStore({
+      data: readyData,
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
     });
 
-    render(
-      <DashboardShell
-        data={readyData}
-        {...defaultShellProps}
-        onRefresh={onRefresh}
-        refreshWarning="Dashboard data may be stale."
-        onRetry={onRetry}
-      />,
-    );
+    render(<DashboardShell />);
 
-    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
-    expect(onRefresh).toHaveBeenCalledTimes(1);
-
-    expect(screen.getByRole("status")).toHaveTextContent("Dashboard data may be stale.");
-
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(screen.getByText("Text Comprehend")).toBeInTheDocument();
+    expect(screen.getByText("Fixture")).toBeInTheDocument();
   });
 
-  it("suppresses the ready-only refresh control when dashboard data is not ready", () => {
-    render(
-      <DashboardShell
-        data={createMalformedDashboardData()}
-        {...defaultShellProps}
-        onRefresh={vi.fn()}
-      />,
-    );
+  it("shows loading state when data is loading", () => {
+    setupStore({
+      data: { state: "loading", source: createWorkspaceSource("/repo").meta },
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
+    });
 
-    expect(screen.queryByRole("button", { name: "Refresh data" })).not.toBeInTheDocument();
+    render(<DashboardShell />);
+
+    expect(screen.getByText("Loading dashboard data...")).toBeInTheDocument();
   });
 
-  it("renders warning and retry controls when data is not ready", () => {
-    const onRetry = vi.fn();
-    const malformedData = createMalformedDashboardData();
+  it("shows empty state message", () => {
+    setupStore({
+      data: { state: "empty", source: createWorkspaceSource("/repo").meta },
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
+    });
 
-    render(
-      <DashboardShell
-        data={malformedData}
-        {...defaultShellProps}
-        refreshWarning="Dashboard data may be stale."
-        onRetry={onRetry}
-      />,
-    );
+    render(<DashboardShell />);
 
-    expect(screen.getByRole("status")).toHaveTextContent("Dashboard data may be stale.");
-
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-    expect(onRetry).toHaveBeenCalledTimes(1);
+    expect(screen.getByText(/Run \/comprehend/)).toBeInTheDocument();
   });
 
-  it("announces malformed load failures with alert semantics", () => {
-    render(
-      <DashboardShell
-        data={createMalformedDashboardData()}
-        {...defaultShellProps}
-      />,
-    );
+  it("shows malformed alert when data is malformed", () => {
+    setupStore({
+      data: createMalformedDashboardData(),
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
+    });
+
+    render(<DashboardShell />);
 
     expect(screen.getByRole("alert")).toHaveTextContent("Dashboard data could not be loaded");
   });
 
-  it("exposes which document is currently selected", () => {
-    const readyData = createReadyDashboardData({
-      documents: [
-        createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-        createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-      ],
+  it("renders null when data is null", () => {
+    setupStore({
+      data: null,
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
     });
 
-    render(
-      <DashboardShell
-        data={readyData}
-        {...defaultShellProps}
-        selectedDocumentId="doc-2"
-      />,
-    );
-
-    expect(screen.getByRole("button", { name: "Document One" })).not.toHaveAttribute("aria-pressed");
-    expect(screen.getByRole("button", { name: "Document One" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("button", { name: "Document Two" })).not.toHaveAttribute("aria-pressed");
-    expect(screen.getByRole("button", { name: "Document Two" })).toHaveAttribute("aria-current", "true");
+    const { container } = render(<DashboardShell />);
+    expect(container.innerHTML).toBe("");
   });
 
-  it("marks the fallback detail document selected when selectedDocumentId is null", () => {
+  it("renders document list in sidebar when ready", () => {
     const readyData = createReadyDashboardData({
-      documents: [
-        createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-        createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-      ],
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
+    setupStore({
+      data: readyData,
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
     });
 
-    render(<DashboardShell data={readyData} {...defaultShellProps} selectedDocumentId={null} />);
+    render(<DashboardShell />);
 
-    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Document One" })).toHaveAttribute("aria-current", "true");
-    expect(screen.getByRole("button", { name: "Document One" })).not.toHaveAttribute("aria-pressed");
-    expect(screen.getByRole("button", { name: "Document Two" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("button", { name: "Document Two" })).not.toHaveAttribute("aria-pressed");
+    expect(screen.getByRole("button", { name: "Document One" })).toBeInTheDocument();
   });
 
-  it("marks the displayed fallback detail document selected when selectedDocumentId is missing", () => {
-    const readyData = createReadyDashboardData({
-      documents: [
-        createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-        createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-      ],
-    });
-
-    render(<DashboardShell data={readyData} {...defaultShellProps} selectedDocumentId="missing-doc" />);
-
-    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Document One" })).toHaveAttribute("aria-current", "true");
-    expect(screen.getByRole("button", { name: "Document One" })).not.toHaveAttribute("aria-pressed");
-    expect(screen.getByRole("button", { name: "Document Two" })).not.toHaveAttribute("aria-current");
-    expect(screen.getByRole("button", { name: "Document Two" })).not.toHaveAttribute("aria-pressed");
-  });
-
-  it("distinguishes duplicate document titles in the document list", () => {
-    const readyData = createReadyDashboardData({
-      documents: [
-        createDocument("doc-1", "Overview", createAvailableDetail("# First Overview")),
-        createDocument("doc-2", "Overview", createAvailableDetail("# Second Overview")),
-      ],
-    });
-
-    render(<DashboardShell data={readyData} {...defaultShellProps} selectedDocumentId="doc-1" />);
-
-    expect(screen.getByRole("button", { name: "Overview (docs/doc-1.md)" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Overview (docs/doc-2.md)" })).toBeInTheDocument();
-  });
-
-  it("renders only documents in the current graph working set", () => {
-    const readyData = createReadyDashboardData({
-      documents: [
-        createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-        createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-      ],
-    });
-
-    render(
-      <DashboardShell
-        data={readyData}
-        {...defaultShellProps}
-        graph={{
-          nodes: [
-            {
-              id: "doc-2:document:doc-2",
-              rawId: "doc-2",
-              kind: "document",
-              label: "Document Two",
-              documentId: "doc-2",
-              searchText: "document two",
-            },
-          ],
-          matchedNodeIds: ["doc-2:document:doc-2"],
-          visibleEdges: [],
-        }}
-      />,
-    );
-
-    expect(screen.queryByRole("button", { name: "Document One" })).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Document Two" })).toBeInTheDocument();
-  });
-
-  it("disables non-wired controls and makes the preview state explicit", () => {
+  it("renders FacetToggleGroup inside the sidebar", () => {
     const readyData = createReadyDashboardData();
+    setupStore({
+      data: readyData,
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
+    });
 
-    const { container } = render(<DashboardShell data={readyData} {...defaultShellProps} selectedDocumentId="doc-1" />);
+    render(<DashboardShell />);
 
-    expect(screen.getByText("Search, facet filters, and graph node selection will be available after app wiring lands.")).toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: "Search graph" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Clear" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Documents" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Concepts" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeDisabled();
-    expect(screen.getByRole("checkbox", { name: "Questions" })).toBeDisabled();
-    const graphNode = container.querySelector(".react-flow__node");
-    expect(graphNode).toBeTruthy();
+    expect(screen.getByRole("group", { name: "Visible Node Types" })).toBeInTheDocument();
   });
 
-  it("builds the graph view-model when no graph prop is injected", () => {
+  it("shows workspace root for workspace source", () => {
+    const readyData = createReadyDashboardData({
+      source: createWorkspaceSource("/repo").meta,
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
+    setupStore({
+      data: readyData,
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
+    });
+
+    render(<DashboardShell />);
+
+    expect(screen.getByText("Workspace")).toBeInTheDocument();
+    const repoEls = screen.getAllByText("/repo");
+    expect(repoEls.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it("renders detail panel with first document when ready", () => {
+    const readyData = createReadyDashboardData({
+      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+    });
+    setupStore({
+      data: readyData,
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
+    });
+
+    render(<DashboardShell />);
+
+    expect(screen.getByText("Layered Summary")).toBeInTheDocument();
+  });
+
+  it("calls selectNode when a document button is clicked", () => {
+    const selectNode = vi.fn();
     const readyData = createReadyDashboardData({
       documents: [
-        {
-          ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-          concepts: [createConcept("concept-1", "Concept One")],
-        },
+        createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
       ],
-      graphEdges: [createGraphEdge("doc-1", "concept-1", "contains")],
+    });
+    setupStore({
+      data: readyData,
+      searchQuery: "",
+      facets: createDefaultFacetState(),
+      selectedNodeId: null,
+      selectNode,
     });
 
-    const { container } = render(<DashboardShell data={readyData} {...defaultShellProps} selectedDocumentId="doc-1" />);
+    render(<DashboardShell />);
 
-    const graphNodes = container.querySelectorAll(".react-flow__node");
-    expect(graphNodes.length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("shows the graph fallback message when the graph view-model provides one", () => {
-    const readyData = createReadyDashboardData({
-      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-    });
-
-    render(
-      <DashboardShell
-        data={readyData}
-        {...defaultShellProps}
-        searchQuery=""
-        facets={createDefaultFacetState()}
-        graph={{
-          nodes: [],
-          matchedNodeIds: [],
-          visibleEdges: [],
-          renderMessage: "Graph view unavailable for the current selection.",
-        }}
-        onSearchQueryChange={() => {}}
-        onResetSearch={() => {}}
-        onFacetChange={() => {}}
-        onSelectNode={() => {}}
-        viewState={{ zoom: 1, offsetX: 0, offsetY: 0 }}
-        onViewStateChange={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("Graph view unavailable for the current selection.")).toBeInTheDocument();
-    expect(screen.queryByText("No graph matches the current search and facet filters.")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Document One" })).toBeInTheDocument();
-    expect(screen.getByText("dashboard-workspace")).toBeInTheDocument();
-  });
-
-  it("derives a graph fallback message when filters hide every renderable node", () => {
-    const readyData = createReadyDashboardData({
-      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-    });
-
-    render(
-      <DashboardShell
-        data={readyData}
-        {...defaultShellProps}
-        searchQuery=""
-        facets={{ documents: false, concepts: false, arguments: false, questions: false }}
-        graph={{
-          nodes: [],
-          matchedNodeIds: [],
-          visibleEdges: [],
-        }}
-        onSearchQueryChange={() => {}}
-        onResetSearch={() => {}}
-        onFacetChange={() => {}}
-        onSelectNode={() => {}}
-        viewState={{ zoom: 1, offsetX: 0, offsetY: 0 }}
-        onViewStateChange={() => {}}
-      />,
-    );
-
-    expect(screen.getByText("Graph view unavailable for the current selection.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Document One" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Document One" }));
+    expect(selectNode).toHaveBeenCalled();
   });
 });

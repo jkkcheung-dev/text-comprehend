@@ -32,10 +32,10 @@ describe("SearchControls", () => {
     expect(onReset).toHaveBeenCalledTimes(1);
   });
 
-  it("disables the search input and clear action when unavailable", () => {
-    render(<SearchControls query="event loop" onQueryChange={vi.fn()} onReset={vi.fn()} disabled />);
+  it("renders the search input with placeholder", () => {
+    render(<SearchControls query="" onQueryChange={vi.fn()} onReset={vi.fn()} />);
 
-    expect(screen.getByRole("searchbox", { name: "Search graph" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Clear" })).toBeDisabled();
+    const input = screen.getByRole("searchbox", { name: "Search graph" });
+    expect(input).toHaveAttribute("placeholder", "Search graph...");
   });
 });

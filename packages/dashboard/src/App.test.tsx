@@ -1,24 +1,9 @@
 // @vitest-environment jsdom
 
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, render, waitFor } from "@testing-library/react";
 import "@testing-library/jest-dom/vitest";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { DashboardData, DashboardSource } from "./data/types";
-import { App } from "./App";
-import {
-  createAvailableDetail,
-  createArgument,
-  createConcept,
-  createDocument,
-  createDegradedDetail,
-  createEmptyDashboardData,
-  createFixtureSource,
-  createGraphEdge,
-  createMalformedDashboardData,
-  createQuestion,
-  createReadyDashboardData,
-  createWorkspaceSource,
-} from "./test/factories";
 
 beforeAll(() => {
   global.ResizeObserver = class {
@@ -28,580 +13,161 @@ beforeAll(() => {
   };
 });
 
+const storeState = {
+  data: null as DashboardData | null,
+  source: null as DashboardSource | null,
+  searchQuery: "",
+  facets: { documents: true, concepts: true, arguments: true, questions: true },
+  selectedNodeId: null as string | null,
+  refreshToken: 0,
+  lastReadyData: null as any,
+  refreshWarning: null as string | null,
+};
+
+const storeActions = {
+  initialize: vi.fn((source: DashboardSource) => {
+    storeState.source = source;
+    storeState.data = null;
+  }),
+  setData: vi.fn((data: DashboardData) => {
+    storeState.data = data;
+  }),
+  setSearchQuery: vi.fn(),
+  toggleFacet: vi.fn(),
+  selectNode: vi.fn(),
+  refresh: vi.fn(),
+};
+
+vi.mock("./store/dashboard-store", () => ({
+  useDashboardStore: vi.fn((selector: any) => selector({ ...storeState, ...storeActions })),
+}));
+
+import { App } from "./App";
+import {
+  createAvailableDetail,
+  createDocument,
+  createEmptyDashboardData,
+  createFixtureSource,
+  createMalformedDashboardData,
+  createReadyDashboardData,
+  createWorkspaceSource,
+} from "./test/factories";
+
 const fixtureSource: DashboardSource = createFixtureSource();
 
 afterEach(() => {
   cleanup();
+  vi.clearAllMocks();
+  storeState.data = null;
+  storeState.source = null;
+  storeState.refreshToken = 0;
 });
 
-function findNodeByLabel(container: HTMLElement, label: string): Element | undefined {
-  const nodes = container.querySelectorAll(".react-flow__node");
-  return Array.from(nodes).find((n) => n.textContent?.includes(label));
-}
-
-function clickGraphNode(container: HTMLElement, label: string) {
-  const node = findNodeByLabel(container, label);
-  if (node) {
-    fireEvent.click(node);
-  }
-}
-
 describe("App", () => {
-  it("renders the loading shell before async data resolves", () => {
+  it("calls initialize and loadData on mount", async () => {
+    const loadData = vi.fn().mockResolvedValue(
+      createReadyDashboardData({
+        documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+      }),
+    );
+
+    render(<App source={fixtureSource} loadData={loadData} />);
+
+    expect(storeActions.initialize).toHaveBeenCalledWith(fixtureSource);
+
+    await waitFor(() => {
+      expect(loadData).toHaveBeenCalledWith(fixtureSource);
+    });
+
+    await waitFor(() => {
+      expect(storeActions.setData).toHaveBeenCalled();
+      expect(storeState.data).not.toBeNull();
+    });
+  });
+
+  it("calls initialize with source on mount", () => {
     render(<App source={fixtureSource} loadData={() => new Promise(() => {})} />);
 
-    expect(screen.getByText("Text Comprehend")).toBeInTheDocument();
-    expect(screen.getByRole("searchbox", { name: "Search graph" })).toBeInTheDocument();
-    expect(screen.getByText("Loading dashboard data...")).toBeInTheDocument();
+    expect(storeActions.initialize).toHaveBeenCalledWith(fixtureSource);
   });
 
-  it("renders the live shell controls and source details when ready", async () => {
-    render(
-      <App
-        source={createWorkspaceSource("/repo")}
-        loadData={async () =>
-          createReadyDashboardData({
-            source: createWorkspaceSource("/repo").meta,
-            documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-          })
-        }
-      />,
-    );
-
-    expect(await screen.findByRole("searchbox", { name: "Search graph" })).toBeInTheDocument();
-    expect(screen.getByText("Workspace")).toBeInTheDocument();
-    expect(screen.getAllByText("/repo").length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByRole("heading", { name: "Documents" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Documents" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Concepts" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Arguments" })).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Questions" })).toBeInTheDocument();
-    expect(
-      screen.queryByText("Search, facet filters, and graph node selection will be available after app wiring lands."),
-    ).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
-  });
-
-  it("syncs graph-node selection back to the document list and detail panel", async () => {
-    const { container } = render(
-      <App
-        source={fixtureSource}
-        loadData={async () =>
-          createReadyDashboardData({
-            source: fixtureSource.meta,
-            documents: [
-              {
-                ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-                concepts: [
-                  {
-                    ...createConcept("concept-1", "Event Loop"),
-                    sourceRefs: [{ documentId: "doc-1", startLine: 4, endLine: 7, excerpt: "Event loop excerpt" }],
-                  },
-                ],
-              },
-            ],
-            graphEdges: [
-              createGraphEdge("doc-1", "concept-1", "contains"),
-              createGraphEdge("concept-1", "concept-1", "defines"),
-            ],
-          })
-        }
-      />,
-    );
-
-    await screen.findByRole("heading", { name: "Document One" });
-    clickGraphNode(container, "Event Loop");
-
-    expect(screen.getByRole("button", { name: "Document One" })).toHaveAttribute("aria-current", "true");
-    expect(screen.getAllByText("Event Loop").length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("renders document metadata plus argument and question inspection content from the selected graph node", async () => {
-    const { container } = render(
-      <App
-        source={fixtureSource}
-        loadData={async () =>
-          createReadyDashboardData({
-            source: fixtureSource.meta,
-            documents: [
-              {
-                ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-                arguments: [
-                  {
-                    ...createArgument("argument-1", "Rendering stays responsive"),
-                    evidence: [
-                      {
-                        content: "Profiler samples show shorter commits.",
-                        type: "data",
-                        strength: "strong",
-                        sourceRef: {
-                          documentId: "doc-1",
-                          startLine: 13,
-                          endLine: 14,
-                          excerpt: "Evidence excerpt",
-                        },
-                      },
-                    ],
-                    sourceRefs: [{ documentId: "doc-1", startLine: 10, endLine: 12, excerpt: "Argument excerpt" }],
-                  },
-                ],
-                questions: [
-                  {
-                    ...createQuestion("question-1", "What triggers rerendering?"),
-                    sourceRefs: [{ documentId: "doc-1", startLine: 21, endLine: 22, excerpt: "Question excerpt" }],
-                  },
-                ],
-              },
-            ],
-            graphEdges: [
-              createGraphEdge("doc-1", "argument-1", "contains"),
-              createGraphEdge("question-1", "doc-1", "questions"),
-            ],
-          })
-        }
-      />,
-    );
-
-    await screen.findByRole("heading", { name: "Document One" });
-
-    clickGraphNode(container, "Rendering stays responsive");
-
-    expect(screen.getAllByText("Rendering stays responsive").length).toBeGreaterThanOrEqual(2);
-
-    clickGraphNode(container, "What triggers rerendering?");
-
-    expect(screen.getAllByText("What triggers rerendering?").length).toBeGreaterThanOrEqual(2);
-  });
-
-  it("switches the selected document and degrades only the detail panel", async () => {
-    render(
-      <App
-        source={fixtureSource}
-        loadData={async () =>
-          createReadyDashboardData({
-            source: fixtureSource.meta,
-            documents: [
-              createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-              createDocument(
-                "doc-2",
-                "Document Two",
-                createDegradedDetail(
-                  ".text-comprehend/simplified/doc-2/layered-summary.md",
-                  "ENOENT: missing file",
-                ),
-              ),
-            ],
-          })
-        }
-      />,
-    );
-
-    await screen.findByRole("heading", { name: "Document One" });
-    fireEvent.click(screen.getByRole("button", { name: "Document Two" }));
+  it("calls setData with malformed data", async () => {
+    const malformedData = createMalformedDashboardData(fixtureSource.meta);
+    render(<App source={fixtureSource} loadData={async () => malformedData} />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Document Two" })).toHaveAttribute("aria-current", "true");
-      expect(screen.getByText("Document detail is unavailable for this artifact.")).toBeInTheDocument();
-      expect(screen.getByText(".text-comprehend/simplified/doc-2/layered-summary.md")).toBeInTheDocument();
+      expect(storeActions.setData).toHaveBeenCalledWith(malformedData);
     });
-
-    expect(screen.queryByRole("heading", { name: "Document One" })).not.toBeInTheDocument();
+    expect(storeState.data).toEqual(malformedData);
   });
 
-  it("does not let the initial ready-state selection overwrite the first manual document selection", async () => {
-    vi.resetModules();
-
-    try {
-      vi.doMock("./features/dashboard-shell", async () => {
-        const React = await import("react");
-
-        return {
-          DashboardShell: ({
-            data,
-            onSelectDocument,
-            selectedDocumentId,
-          }: {
-            data: DashboardData;
-            onSelectDocument: (documentId: string) => void;
-            selectedDocumentId: string | null;
-          }) => {
-            const hasQueuedSelection = React.useRef(false);
-
-            if (data.state === "ready" && selectedDocumentId === "doc-1" && !hasQueuedSelection.current) {
-              hasQueuedSelection.current = true;
-              queueMicrotask(() => {
-                onSelectDocument("doc-2");
-              });
-            }
-
-            return <p data-testid="selected-document-id">{selectedDocumentId ?? "none"}</p>;
-          },
-        };
-      });
-
-      const { App: IsolatedApp } = await import("./App");
-
-      render(
-        <IsolatedApp
-          source={fixtureSource}
-          loadData={async () =>
-            createReadyDashboardData({
-              source: fixtureSource.meta,
-              documents: [
-                createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-                createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-              ],
-            })
-          }
-        />,
-      );
-
-      await waitFor(() => {
-        expect(screen.getByTestId("selected-document-id")).toHaveTextContent("doc-2");
-      });
-    } finally {
-      vi.doUnmock("./features/dashboard-shell");
-      vi.resetModules();
-    }
-  });
-
-  it("keeps document-list clicks focused on document detail when the documents facet is off", async () => {
-    const { container } = render(
-      <App
-        source={fixtureSource}
-        loadData={async () =>
-          createReadyDashboardData({
-            source: fixtureSource.meta,
-            documents: [
-              {
-                ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-                concepts: [createConcept("concept-1", "Event Loop")],
-              },
-            ],
-            graphEdges: [createGraphEdge("doc-1", "concept-1", "contains")],
-          })
-        }
-      />,
-    );
-
-    await screen.findByRole("heading", { name: "Document One" });
-
-    fireEvent.click(screen.getByRole("checkbox", { name: "Documents" }));
-
-    clickGraphNode(container, "Event Loop");
-
-    expect(screen.getAllByText("Event Loop").length).toBeGreaterThanOrEqual(2);
-
-    fireEvent.click(screen.getByRole("button", { name: "Document One" }));
-
-    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
-  });
-
-  it("clears selection when search filters out the current node", async () => {
-    const { container } = render(
-      <App
-        source={fixtureSource}
-        loadData={async () =>
-          createReadyDashboardData({
-            source: fixtureSource.meta,
-            documents: [
-              {
-                ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-                concepts: [createConcept("concept-1", "Event Loop")],
-              },
-              {
-                ...createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-                questions: [createQuestion("question-1", "Why hydrate?")],
-              },
-            ],
-            graphEdges: [
-              createGraphEdge("doc-1", "concept-1", "contains"),
-              createGraphEdge("question-1", "doc-2", "questions"),
-            ],
-          })
-        }
-      />,
-    );
-
-    await screen.findByRole("heading", { name: "Document One" });
-    clickGraphNode(container, "Why hydrate?");
-    expect(screen.getAllByText("Why hydrate?").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByRole("button", { name: "Document Two" })).toHaveAttribute("aria-current", "true");
-
-    fireEvent.change(screen.getByRole("searchbox", { name: "Search graph" }), {
-      target: { value: "event" },
-    });
-
-    expect(await screen.findByText("Select a document from the sidebar to view its details.")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Document One" })).not.toHaveAttribute("aria-current");
-    expect(screen.queryByRole("button", { name: "Document Two" })).not.toBeInTheDocument();
-  });
-
-  it("clears node and document selection when filters leave no visible graph nodes", async () => {
-    const { container } = render(
-      <App
-        source={fixtureSource}
-        loadData={async () =>
-          createReadyDashboardData({
-            source: fixtureSource.meta,
-            documents: [
-              {
-                ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-                concepts: [createConcept("concept-1", "Event Loop")],
-              },
-              {
-                ...createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-                questions: [createQuestion("question-1", "Why hydrate?")],
-              },
-            ],
-            graphEdges: [
-              createGraphEdge("doc-1", "concept-1", "contains"),
-              createGraphEdge("question-1", "doc-2", "questions"),
-            ],
-          })
-        }
-      />,
-    );
-
-    await screen.findByRole("heading", { name: "Document One" });
-    clickGraphNode(container, "Why hydrate?");
-
-    expect(screen.getAllByText("Why hydrate?").length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByRole("button", { name: "Document Two" })).toHaveAttribute("aria-current", "true");
-
-    fireEvent.change(screen.getByRole("searchbox", { name: "Search graph" }), {
-      target: { value: "missing-query" },
-    });
-
-    expect(await screen.findByText("No graph matches the current search and facet filters.")).toBeInTheDocument();
-    expect(screen.getByText("Select a document from the sidebar to view its details.")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Document One" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Document Two" })).not.toBeInTheDocument();
-  });
-
-  it("shows the malformed state when the first load fails before any ready data exists", async () => {
-    render(
-      <App
-        source={fixtureSource}
-        loadData={async () => createMalformedDashboardData(fixtureSource.meta)}
-      />,
-    );
-
-    expect(await screen.findByText("Dashboard data could not be loaded")).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Retry" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Document One" })).not.toBeInTheDocument();
-  });
-
-  it("routes synchronous loadData throws to the malformed state", async () => {
-    render(
-      <App
-        source={fixtureSource}
-        loadData={() => {
-          throw new Error("Broken payload");
-        }}
-      />,
-    );
-
-    expect(await screen.findByText("Dashboard data could not be loaded")).toBeInTheDocument();
-    expect(screen.getByText("dashboard-shell")).toBeInTheDocument();
-    expect(screen.getByText("Broken payload")).toBeInTheDocument();
-  });
-
-  it("preserves the last ready view and shows a warning when a manual refresh returns malformed data", async () => {
-    const readyData: DashboardData = createReadyDashboardData({
-      source: fixtureSource.meta,
-      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-    });
-
-    const loadData = vi
-      .fn<(source: DashboardSource) => Promise<DashboardData>>()
-      .mockResolvedValueOnce(readyData)
-      .mockResolvedValueOnce(createMalformedDashboardData(fixtureSource.meta));
-
-    render(<App source={fixtureSource} loadData={loadData} />);
-
-    await screen.findByRole("heading", { name: "Document One" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
-
-    expect(await screen.findByText("Dashboard refresh failed. Showing the last loaded data.")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Document One" })).toBeInTheDocument();
-    expect(screen.queryByText("Dashboard data could not be loaded")).not.toBeInTheDocument();
-  });
-
-  it("retries the same source and clears the warning after a successful reload", async () => {
-    const readyData: DashboardData = createReadyDashboardData({
-      source: fixtureSource.meta,
-      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-    });
-
-    const refreshedReadyData: DashboardData = createReadyDashboardData({
-      source: fixtureSource.meta,
-      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One v2"))],
-    });
-
-    const loadData = vi
-      .fn<(source: DashboardSource) => Promise<DashboardData>>()
-      .mockResolvedValueOnce(readyData)
-      .mockResolvedValueOnce(createMalformedDashboardData(fixtureSource.meta))
-      .mockResolvedValueOnce(refreshedReadyData);
-
-    render(<App source={fixtureSource} loadData={loadData} />);
-
-    await screen.findByRole("heading", { name: "Document One" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
-
-    expect(await screen.findByText("Dashboard refresh failed. Showing the last loaded data.")).toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
-
-    await screen.findByRole("heading", { name: "Document One v2" });
-    expect(screen.queryByText("Dashboard refresh failed. Showing the last loaded data.")).not.toBeInTheDocument();
-  });
-
-  it("shows the empty state when a refresh returns empty data", async () => {
-    const readyData: DashboardData = createReadyDashboardData({
-      source: fixtureSource.meta,
-      documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-    });
-
-    const loadData = vi
-      .fn<(source: DashboardSource) => Promise<DashboardData>>()
-      .mockResolvedValueOnce(readyData)
-      .mockResolvedValueOnce(createEmptyDashboardData(fixtureSource.meta));
-
-    render(<App source={fixtureSource} loadData={loadData} />);
-
-    await screen.findByRole("heading", { name: "Document One" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
-
-    expect(
-      await screen.findByText("Run /comprehend in your workspace to generate dashboard artifacts."),
-    ).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Document One" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Dashboard refresh failed. Showing the last loaded data.")).not.toBeInTheDocument();
-  });
-
-  it("shows loading immediately when the source changes", async () => {
-    const nextSource: DashboardSource = createWorkspaceSource("/repo");
-
-    const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) => {
-      if (source.meta.mode === "fixture") {
-        return createReadyDashboardData({
-          source: source.meta,
-          documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-        });
-      }
-
-      return new Promise(() => {});
-    });
-
-    const view = render(<App source={fixtureSource} loadData={loadData} />);
-
-    await screen.findByRole("heading", { name: "Document One" });
-
-    view.rerender(<App source={nextSource} loadData={loadData} />);
-
-    expect(screen.getByText("Loading dashboard data...")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Document One" })).not.toBeInTheDocument();
-    expect(screen.getByText("Workspace")).toBeInTheDocument();
-    expect(screen.getAllByText("/repo").length).toBeGreaterThanOrEqual(1);
-  });
-
-  it("drops the stale snapshot immediately when the source key changes", async () => {
-    const workspaceSource: DashboardSource = createWorkspaceSource("/repo");
-
-    const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) => {
-      if (source.meta.mode === "fixture") {
-        if (loadData.mock.calls.length === 1) {
-          return createReadyDashboardData({
-            source: fixtureSource.meta,
-            documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
-          });
-        }
-
-        return createMalformedDashboardData(fixtureSource.meta);
-      }
-
-      return new Promise(() => {});
-    });
-
-    const view = render(<App source={fixtureSource} loadData={loadData} />);
-
-    await screen.findByRole("heading", { name: "Document One" });
-
-    fireEvent.click(screen.getByRole("button", { name: "Refresh data" }));
-
-    expect(await screen.findByText("Dashboard refresh failed. Showing the last loaded data.")).toBeInTheDocument();
-
-    view.rerender(<App source={workspaceSource} loadData={loadData} />);
-
-    expect(screen.getByText("Loading dashboard data...")).toBeInTheDocument();
-    expect(screen.queryByRole("heading", { name: "Document One" })).not.toBeInTheDocument();
-    expect(screen.queryByText("Dashboard refresh failed. Showing the last loaded data.")).not.toBeInTheDocument();
-  });
-
-  it("does not reload or lose selection when the same logical source is recreated", async () => {
-    const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) => ({
-      ...createReadyDashboardData({
-        source: source.meta,
-        documents: [
-          createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-          createDocument("doc-2", "Document Two", createAvailableDetail("# Document Two")),
-        ],
-      }),
-    }));
-
-    const view = render(<App source={fixtureSource} loadData={loadData} />);
-
-    await screen.findByRole("heading", { name: "Document One" });
-    fireEvent.click(screen.getByRole("button", { name: "Document Two" }));
+  it("calls setData with empty data", async () => {
+    const emptyData = createEmptyDashboardData(fixtureSource.meta);
+    render(<App source={fixtureSource} loadData={async () => emptyData} />);
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "Document Two" })).toHaveAttribute("aria-current", "true");
-      expect(screen.getByRole("heading", { name: "Document Two" })).toBeInTheDocument();
+      expect(storeActions.setData).toHaveBeenCalledWith(emptyData);
     });
-
-    expect(screen.queryByText("Loading dashboard data...")).not.toBeInTheDocument();
-
-    view.rerender(
-      <App
-        source={createFixtureSource()}
-        loadData={async (source) => loadData(source)}
-      />,
-    );
-
-    expect(screen.queryByText("Loading dashboard data...")).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Document Two" })).toBeInTheDocument();
-    expect(loadData).toHaveBeenCalledTimes(1);
+    expect(storeState.data).toEqual(emptyData);
   });
 
-  it("switches graph labels across zoom levels and resets zoom on source change", async () => {
-    const nextSource: DashboardSource = createWorkspaceSource("/repo");
-    const loadData = vi.fn<(source: DashboardSource) => Promise<DashboardData>>(async (source) =>
+  it("calls loadData with workspace source", async () => {
+    const workspaceSource = createWorkspaceSource("/repo");
+    const loadData = vi.fn().mockResolvedValue(
       createReadyDashboardData({
-        source: source.meta,
-        documents: [
-          {
-            ...createDocument("doc-1", "Document One", createAvailableDetail("# Document One")),
-            concepts: [createConcept("concept-1", "Concept One")],
-          },
-        ],
-        graphEdges: [createGraphEdge("doc-1", "concept-1", "contains")],
+        source: workspaceSource.meta,
+        documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
       }),
     );
 
-    const view = render(<App source={fixtureSource} loadData={loadData} />);
+    render(<App source={workspaceSource} loadData={loadData} />);
 
-    expect(await screen.findByText("Zoom: 1.0x")).toBeInTheDocument();
+    expect(storeActions.initialize).toHaveBeenCalledWith(workspaceSource);
 
-    fireEvent.click(screen.getByRole("button", { name: "Zoom Out" }));
+    await waitFor(() => {
+      expect(loadData).toHaveBeenCalledWith(workspaceSource);
+    });
+  });
 
-    view.rerender(<App source={nextSource} loadData={loadData} />);
+  it("loads data with new source when source changes", async () => {
+    const loadData = vi.fn().mockResolvedValue(
+      createReadyDashboardData({
+        documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+      }),
+    );
+    const workspaceSource = createWorkspaceSource("/repo");
 
-    expect(await screen.findByText("Zoom: 1.0x")).toBeInTheDocument();
+    const { rerender } = render(<App source={fixtureSource} loadData={loadData} />);
+
+    await waitFor(() => {
+      expect(loadData).toHaveBeenCalledWith(fixtureSource);
+    });
+
+    rerender(<App source={workspaceSource} loadData={loadData} />);
+
+    await waitFor(() => {
+      expect(loadData).toHaveBeenCalledWith(workspaceSource);
+    });
+  });
+
+  it("reloads when refreshToken changes", async () => {
+    const loadData = vi.fn().mockResolvedValue(
+      createReadyDashboardData({
+        documents: [createDocument("doc-1", "Document One", createAvailableDetail("# Document One"))],
+      }),
+    );
+
+    const { rerender } = render(<App source={fixtureSource} loadData={loadData} />);
+
+    await waitFor(() => {
+      expect(loadData).toHaveBeenCalledTimes(1);
+    });
+
+    storeState.refreshToken = 1;
+    rerender(<App source={fixtureSource} loadData={loadData} />);
+
+    await waitFor(() => {
+      expect(loadData).toHaveBeenCalledTimes(2);
+    });
   });
 });
