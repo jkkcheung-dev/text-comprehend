@@ -1,272 +1,144 @@
-import styles from "./dashboard-shell.module.css";
 import { ReactFlowProvider } from "@xyflow/react";
 import type { DashboardData, DashboardDocument } from "../data/types";
-import { DetailPanelShell, type DetailSelection } from "./detail-panel-shell";
-import { FacetToggleGroup } from "./facet-toggle-group";
-import { GraphCanvas } from "./graph-canvas";
-import {
-  buildGraphViewModel,
-  createDefaultFacetState,
-  validateRenderableGraph,
-  type GraphFacetState,
-} from "./graph-view-model";
+import { useDashboardStore } from "../store/dashboard-store";
 import { SearchControls } from "./search-controls";
+import { FacetToggleGroup } from "./facet-toggle-group";
 import { SourceStatusBadge } from "./source-status-badge";
-
-type GraphViewState = {
-  zoom: number;
-  offsetX: number;
-  offsetY: number;
-};
-
-type DashboardGraph = ReturnType<typeof buildGraphViewModel> & {
-  renderMessage?: string;
-};
-
-const defaultGraphEmptyMessage = "No graph matches the current search and facet filters.";
+import { GraphCanvas } from "./graph-canvas";
+import { DetailPanelShell } from "./detail-panel-shell";
+import { buildGraphViewModel, createDefaultFacetState, validateRenderableGraph, type GraphFacetState } from "./graph-view-model";
 
 function getDocumentButtonLabels(documents: DashboardDocument[]): Map<string, string> {
   const titleCount = new Map<string, number>();
-
-  for (const document of documents) {
-    titleCount.set(document.title, (titleCount.get(document.title) ?? 0) + 1);
+  for (const doc of documents) {
+    titleCount.set(doc.title, (titleCount.get(doc.title) ?? 0) + 1);
   }
-
   return new Map(
-    documents.map((document) => [
-      document.id,
-      (titleCount.get(document.title) ?? 0) > 1 ? `${document.title} (${document.filePath})` : document.title,
+    documents.map((doc) => [
+      doc.id,
+      (titleCount.get(doc.title) ?? 0) > 1 ? `${doc.title} (${doc.filePath})` : doc.title,
     ]),
   );
 }
 
-type DashboardShellProps = {
-  data: DashboardData;
-  searchQuery?: string;
-  facets?: GraphFacetState;
-  graph?: DashboardGraph | null;
-  detailSelection?: DetailSelection | null;
-  selectedDocumentId: string | null;
-  selectedNodeId: string | null;
-  viewState?: GraphViewState;
-  onViewStateChange?: (viewState: GraphViewState) => void;
-  onSearchQueryChange?: (query: string) => void;
-  onResetSearch?: () => void;
-  onFacetChange?: (facet: keyof GraphFacetState, nextValue: boolean) => void;
-  onSelectDocument: (documentId: string) => void;
-  onSelectNode?: (nodeId: string) => void;
-  onRefresh?: () => void;
-  refreshWarning?: string | null;
-  onRetry?: () => void;
-};
+export function DashboardShell() {
+  const data = useDashboardStore((s) => s.data);
+  const searchQuery = useDashboardStore((s) => s.searchQuery);
+  const facets = useDashboardStore((s) => s.facets);
+  const selectedNodeId = useDashboardStore((s) => s.selectedNodeId);
+  const setSearchQuery = useDashboardStore((s) => s.setSearchQuery);
+  const toggleFacet = useDashboardStore((s) => s.toggleFacet);
+  const selectNode = useDashboardStore((s) => s.selectNode);
+  const refresh = useDashboardStore((s) => s.refresh);
 
-function getSelectedDocument(
-  documents: DashboardDocument[],
-  selectedDocumentId: string | null,
-  allowFallbackSelection: boolean,
-): DashboardDocument | null {
-  if (selectedDocumentId) {
-    return documents.find((document) => document.id === selectedDocumentId) ?? (allowFallbackSelection ? documents[0] ?? null : null);
-  }
+  if (!data) return null;
 
-  return allowFallbackSelection ? documents[0] ?? null : null;
-}
+  const isReady = data.state === "ready";
+  const graph = isReady
+    ? buildGraphViewModel(data, { searchQuery, facets })
+    : null;
 
-function getVisibleDocuments(
-  data: DashboardData,
-  graph: DashboardGraph | null,
-  graphRenderMessage: string | null,
-): DashboardDocument[] {
-  if (data.state !== "ready") {
-    return [];
-  }
+  const selectedDocument = isReady && selectedNodeId
+    ? data.documents.find((d) => d.id === graph?.nodes.find((n) => n.id === selectedNodeId)?.documentId) ?? null
+    : isReady ? data.documents[0] ?? null : null;
 
-  if (!graph) {
-    return data.documents;
-  }
-
-  if (graphRenderMessage) {
-    return data.documents;
-  }
-
-  const visibleDocumentIds = new Set(graph.nodes.map((node) => node.documentId));
-  return data.documents.filter((document) => visibleDocumentIds.has(document.id));
-}
-
-function getDefaultDetailSelection(document: DashboardDocument | null): DetailSelection | null {
-  if (!document) {
-    return null;
-  }
-
-  return { kind: "document", label: document.title, documentTitle: document.title };
-}
-
-function getGraphRenderMessage(
-  data: DashboardData,
-  graph: DashboardGraph | null,
-  searchQuery: string,
-  facets: GraphFacetState,
-): string | null {
-  if (data.state !== "ready" || !graph || graph.renderMessage) {
-    return graph?.renderMessage ?? null;
-  }
-
-  if (searchQuery.trim() !== "" || data.documents.length === 0 || graph.nodes.length > 0) {
-    return null;
-  }
-
-  const renderState = validateRenderableGraph({
-    nodes: graph.nodes,
-    visibleEdges: graph.visibleEdges,
-    matchedNodeIds: graph.matchedNodeIds,
-  });
-
-  return renderState.state === "invalid" ? renderState.message : null;
-}
-
-export function DashboardShell({
-  data,
-  searchQuery = "",
-  facets = createDefaultFacetState(),
-  graph,
-  detailSelection = null,
-  selectedDocumentId,
-  selectedNodeId,
-  viewState,
-  onViewStateChange,
-  onSearchQueryChange,
-  onResetSearch,
-  onFacetChange,
-  onSelectDocument,
-  onSelectNode,
-  onRefresh,
-  refreshWarning,
-  onRetry,
-}: DashboardShellProps) {
-  const visibleGraph: DashboardGraph | null =
-    data.state === "ready" ? (graph ?? buildGraphViewModel(data, { searchQuery, facets })) : null;
-  const graphRenderMessage = getGraphRenderMessage(data, visibleGraph, searchQuery, facets);
-  const hasSearchControls = Boolean(onSearchQueryChange && onResetSearch);
-  const hasFacetControls = Boolean(onFacetChange);
-  const hasGraphSelection = Boolean(onSelectNode);
-  const showPreviewNotice = data.state === "ready" && (!hasSearchControls || !hasFacetControls || !hasGraphSelection);
-  const visibleDocuments = getVisibleDocuments(data, visibleGraph, graphRenderMessage);
-  const selectedDocument = getSelectedDocument(visibleDocuments, selectedDocumentId, !hasGraphSelection && !detailSelection);
-  const effectiveSelectedDocumentId = selectedDocument?.id ?? null;
-  const effectiveDetailSelection = detailSelection ?? getDefaultDetailSelection(selectedDocument);
-  const documentButtonLabels = getDocumentButtonLabels(visibleDocuments);
-  const graphEmptyMessage = graphRenderMessage ?? defaultGraphEmptyMessage;
+  const documents = isReady ? data.documents : [];
 
   return (
-    <div className={styles.app}>
-      <header className={styles.header}>
-        <span className={styles.logo}>Text Comprehend</span>
+    <div className="h-screen flex flex-col bg-surface-canvas">
+      {/* Header */}
+      <header className="h-12 flex items-center px-4 gap-4 bg-surface-canvas border-b border-border-default shrink-0">
+        <span className="font-mono font-bold text-sm text-text-primary whitespace-nowrap">
+          Text Comprehend
+        </span>
         <SearchControls
           query={searchQuery}
-          onQueryChange={onSearchQueryChange ?? (() => {})}
-          onReset={onResetSearch ?? (() => {})}
-          disabled={!hasSearchControls}
+          onQueryChange={setSearchQuery}
+          onReset={() => setSearchQuery("")}
         />
-        <span className={styles.headerSpacer} />
+        <div className="flex-1" />
         <SourceStatusBadge source={data.source} />
         {data.source.mode === "workspace" && (
-          <span className={styles.headerLabel}>{data.source.workspaceRoot}</span>
+          <span className="text-xs text-text-secondary opacity-70 font-mono">{data.source.workspaceRoot}</span>
         )}
-        {data.state === "ready" && onRefresh && (
-          <button type="button" className={styles.headerRefresh} onClick={onRefresh}>
+        {isReady && (
+          <button type="button" onClick={refresh} className="text-xs text-text-secondary hover:text-text-primary px-2 py-1 rounded transition-colors">
             Refresh
           </button>
         )}
       </header>
 
-      <div className={styles.body}>
-        <aside className={styles.sidebar}>
-          <div className={styles.sidebarSection}>
-            <h2 className={styles.sidebarTitle}>Documents</h2>
-            {data.state === "ready" ? (
-              <ul className={styles.documentList}>
-                {visibleDocuments.map((document) => (
-                  <li key={document.id}>
-                    <button
-                      type="button"
-                      className={styles.documentButton}
-                      aria-current={effectiveSelectedDocumentId === document.id ? "true" : undefined}
-                      onClick={() => onSelectDocument(document.id)}
-                    >
-                      {documentButtonLabels.get(document.id) ?? document.title}
-                    </button>
-                  </li>
+      {/* Body */}
+      <div className="flex flex-1 min-h-0">
+        {/* Sidebar */}
+        <aside className="w-[220px] shrink-0 bg-surface-panel border-r border-border-default flex flex-col">
+          <div className="p-4 border-b border-border-default">
+            <h2 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-3">Documents</h2>
+            {isReady ? (
+              <div className="flex flex-col gap-0.5">
+                {documents.map((doc) => (
+                  <button
+                    key={doc.id}
+                    type="button"
+                    onClick={() => selectNode(`${encodeURIComponent(doc.id)}:document:${encodeURIComponent(doc.id)}`)}
+                    className={`w-full text-left px-2.5 py-1.5 rounded text-sm text-text-secondary hover:bg-surface-raised transition-colors truncate ${selectedDocument?.id === doc.id ? "bg-surface-raised text-text-primary font-medium" : ""}`}
+                  >
+                    {doc.title}
+                  </button>
                 ))}
-              </ul>
+              </div>
             ) : (
-              <p className={styles.stateMessage}>Document list unavailable until dashboard data is ready.</p>
+              <p className="text-sm text-text-muted text-center py-4">
+                Document list unavailable until dashboard data is ready.
+              </p>
             )}
           </div>
-          <div className={styles.sidebarSection}>
-            <FacetToggleGroup
-              facets={facets}
-              onFacetChange={onFacetChange ?? (() => {})}
-              disabled={!hasFacetControls}
-            />
+          <div className="p-4 border-b border-border-default">
+            <FacetToggleGroup facets={facets} onFacetChange={toggleFacet} />
           </div>
-          <div className={styles.sidebarFooter}>
-            <h2 className={styles.sidebarTitle}>Source</h2>
-            <p>{data.source.mode === "fixture" ? data.source.fixtureName : data.source.workspaceRoot}</p>
+          <div className="mt-auto p-3 border-t border-border-default text-[10px] text-text-muted">
+            <h2 className="text-[10px] font-semibold text-text-muted uppercase tracking-wider mb-1">Source</h2>
+            <span className="font-mono">{data.source.mode === "fixture" ? data.source.fixtureName : data.source.workspaceRoot}</span>
           </div>
         </aside>
 
-        <div className={styles.mainContent}>
-          <div className={styles.graphArea}>
-            {refreshWarning && (
-              <div className={styles.warningBanner} role="status">
-                <span>{refreshWarning}</span>
-                {onRetry && <button type="button" onClick={onRetry}>Retry</button>}
-              </div>
-            )}
+        {/* Main area */}
+        <div className="flex-1 flex flex-col min-w-0">
+          <div className="flex-1 relative border-b border-border-default min-h-0">
             {data.state === "loading" && (
-              <p className={styles.stateMessage}>Loading dashboard data...</p>
+              <div className="absolute inset-0 flex items-center justify-center text-text-muted text-sm">Loading dashboard data...</div>
             )}
             {data.state === "empty" && (
-              <p className={styles.stateMessage}>Run /comprehend in your workspace to generate dashboard artifacts.</p>
+              <div className="absolute inset-0 flex items-center justify-center text-text-muted text-sm">Run /comprehend in your workspace to generate dashboard artifacts.</div>
             )}
             {data.state === "malformed" && (
-              <div className={styles.errorAlert} role="alert">
-                <p>Dashboard data could not be loaded</p>
-                <p>{data.path}</p>
-                <p>{data.error}</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-accent-danger text-sm gap-1" role="alert">
+                <span>Dashboard data could not be loaded</span>
               </div>
             )}
-            {data.state === "ready" && (
-              <>
-                {onRefresh && (
-                  <button type="button" className={styles.refreshButton} onClick={onRefresh}>
-                    Refresh data
-                  </button>
-                )}
-                {showPreviewNotice && (
-                  <p className={styles.previewNotice}>
-                    Search, facet filters, and graph node selection will be available after app wiring lands.
-                  </p>
-                )}
-                {viewState && <p className={styles.zoomIndicator}>Zoom: {viewState.zoom.toFixed(1)}x</p>}
-                <ReactFlowProvider>
-                  <GraphCanvas
-                    nodes={visibleGraph?.nodes ?? []}
-                    edges={visibleGraph?.visibleEdges ?? []}
-                    matchedNodeIds={visibleGraph?.matchedNodeIds ?? []}
-                    selectedNodeId={selectedNodeId}
-                    onSelectNode={onSelectNode ?? (() => {})}
-                    viewState={viewState}
-                    onViewStateChange={onViewStateChange}
-                    emptyMessage={graphEmptyMessage}
-                    disabled={!hasGraphSelection}
-                  />
-                </ReactFlowProvider>
-              </>
+            {isReady && (
+              <ReactFlowProvider>
+                <GraphCanvas
+                  nodes={graph?.nodes ?? []}
+                  edges={graph?.visibleEdges ?? []}
+                  matchedNodeIds={graph?.matchedNodeIds ?? []}
+                  selectedNodeId={selectedNodeId}
+                  onSelectNode={selectNode}
+                  emptyMessage="No graph matches the current search and facet filters."
+                />
+              </ReactFlowProvider>
             )}
           </div>
-          <div className={styles.detailArea}>
-            <DetailPanelShell document={selectedDocument} selectedNodeId={selectedNodeId} selection={effectiveDetailSelection} />
+          <div className="h-[180px] shrink-0 bg-surface-panel">
+            <DetailPanelShell
+              document={selectedDocument}
+              selectedNodeId={selectedNodeId}
+              selection={
+                selectedDocument
+                  ? { kind: "document" as const, label: selectedDocument.title, documentTitle: selectedDocument.title }
+                  : null
+              }
+            />
           </div>
         </div>
       </div>
