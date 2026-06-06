@@ -1,5 +1,6 @@
 import { readFile, realpath } from "node:fs/promises";
 import { isAbsolute, relative, resolve } from "node:path";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 
@@ -206,5 +207,5 @@ function dashboardFixtures(): Plugin {
 }
 
 export default defineConfig({
-  plugins: [react(), dashboardFixtures()],
+  plugins: [tailwindcss(), react(), dashboardFixtures()],
 });
