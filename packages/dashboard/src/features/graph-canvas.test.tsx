@@ -133,6 +133,27 @@ describe("GraphCanvas (xyflow)", () => {
     expect(screen.getByText("Target")).toBeInTheDocument();
   });
 
+  it("renders dimmed nodes alongside highlighted nodes when search is active", () => {
+    const nodes = [
+      { ...createNode("doc-1:concept:c1", "Matched"), dimmed: false, highlighted: true },
+      { ...createNode("doc-1:concept:c2", "Not Matched"), dimmed: true, highlighted: false },
+    ];
+    render(
+      <ReactFlowProvider>
+        <GraphCanvas
+          nodes={nodes}
+          edges={[]}
+          matchedNodeIds={["doc-1:concept:c1"]}
+          selectedNodeId={null}
+          onSelectNode={vi.fn()}
+          emptyMessage="Empty"
+        />
+      </ReactFlowProvider>,
+    );
+    expect(screen.getByText("Matched")).toBeInTheDocument();
+    expect(screen.getByText("Not Matched")).toBeInTheDocument();
+  });
+
   it("renders empty message for disabled state when no valid nodes", () => {
     render(
       <ReactFlowProvider>
