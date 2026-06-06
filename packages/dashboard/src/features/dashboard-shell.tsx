@@ -1,12 +1,13 @@
 import { ReactFlowProvider } from "@xyflow/react";
-import type { DashboardData, DashboardDocument } from "../data/types";
+import type { DashboardData, DashboardDocument, ReadyDashboardData } from "../data/types";
 import { useDashboardStore } from "../store/dashboard-store";
 import { SearchControls } from "./search-controls";
 import { FacetToggleGroup } from "./facet-toggle-group";
 import { SourceStatusBadge } from "./source-status-badge";
 import { GraphCanvas } from "./graph-canvas";
 import { DetailPanelShell } from "./detail-panel-shell";
-import { buildGraphViewModel, createDefaultFacetState, validateRenderableGraph, type GraphFacetState } from "./graph-view-model";
+import type { DetailSelection } from "./detail-panel-shell";
+import { buildGraphViewModel } from "./graph-view-model";
 
 function getDocumentButtonLabels(documents: DashboardDocument[]): Map<string, string> {
   const titleCount = new Map<string, number>();
@@ -19,6 +20,78 @@ function getDocumentButtonLabels(documents: DashboardDocument[]): Map<string, st
       (titleCount.get(doc.title) ?? 0) > 1 ? `${doc.title} (${doc.filePath})` : doc.title,
     ]),
   );
+}
+
+function createDocumentSelectionNodeId(documentId: string): string {
+  return `${encodeURIComponent(documentId)}:document:${encodeURIComponent(documentId)}`;
+}
+
+function getDetailSelection(
+  data: ReadyDashboardData,
+  graph: ReturnType<typeof buildGraphViewModel>,
+  selectedNodeId: string | null,
+): DetailSelection | null {
+  if (!selectedNodeId) return null;
+
+  const selectedNode = graph.nodes.find((node) => node.id === selectedNodeId);
+  const document = data.documents.find(
+    (item) => item.id === (selectedNode?.documentId ?? selectedNodeId),
+  );
+  if (!document) return null;
+
+  if (selectedNode?.kind === "document" || !selectedNode) {
+    return {
+      kind: "document",
+      label: document.title,
+      documentTitle: document.title,
+      filePath: document.filePath,
+      fileType: document.fileType,
+      lastAnalyzed: document.lastAnalyzed,
+    };
+  }
+
+  if (selectedNode.kind === "concept") {
+    const concept = document.concepts.find((item) => item.id === selectedNode.rawId);
+    return concept
+      ? {
+          kind: "concept",
+          label: concept.name,
+          documentTitle: document.title,
+          definition: concept.definition,
+          importance: concept.importance,
+          sourceRefs: concept.sourceRefs,
+        }
+      : null;
+  }
+
+  if (selectedNode.kind === "argument") {
+    const argument = document.arguments.find((item) => item.id === selectedNode.rawId);
+    return argument
+      ? {
+          kind: "argument",
+          label: argument.claim,
+          documentTitle: document.title,
+          argumentType: argument.type,
+          sourceRefs: argument.sourceRefs,
+          evidence: argument.evidence,
+          assumptions: argument.assumptions,
+          gaps: argument.gaps,
+        }
+      : null;
+  }
+
+  const question = document.questions.find((item) => item.id === selectedNode.rawId);
+  return question
+    ? {
+        kind: "question",
+        label: question.question,
+        documentTitle: document.title,
+        answer: question.answer,
+        difficulty: question.difficulty,
+        facet: question.facet,
+        sourceRefs: question.sourceRefs,
+      }
+    : null;
 }
 
 export function DashboardShell() {
@@ -80,7 +153,7 @@ export function DashboardShell() {
                   <button
                     key={doc.id}
                     type="button"
-                    onClick={() => selectNode(`${encodeURIComponent(doc.id)}:document:${encodeURIComponent(doc.id)}`)}
+                    onClick={() => selectNode(createDocumentSelectionNodeId(doc.id))}
                     className={`w-full text-left px-2.5 py-1.5 rounded text-sm text-text-secondary hover:bg-surface-raised transition-colors truncate ${selectedDocument?.id === doc.id ? "bg-surface-raised text-text-primary font-medium" : ""}`}
                   >
                     {doc.title}
@@ -133,11 +206,7 @@ export function DashboardShell() {
             <DetailPanelShell
               document={selectedDocument}
               selectedNodeId={selectedNodeId}
-              selection={
-                selectedDocument
-                  ? { kind: "document" as const, label: selectedDocument.title, documentTitle: selectedDocument.title }
-                  : null
-              }
+              selection={isReady && graph ? getDetailSelection(data, graph, selectedNodeId) : null}
             />
           </div>
         </div>
