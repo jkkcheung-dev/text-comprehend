@@ -1,33 +1,19 @@
-import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
+import { Handle, Position } from "@xyflow/react";
 
-type ArgumentNodeType = Node<{ label: string }, "argument">;
+type FacetNodeData = { label: string; kind: string; documentId: string };
 
-export function ArgumentNode({ data, selected }: NodeProps<ArgumentNodeType>) {
-  const borderColor = selected ? "var(--color-primary-light)" : "var(--color-argument)";
+export function ArgumentNode({ data, selected }: { data: FacetNodeData; selected: boolean }) {
   return (
     <div
-      style={{
-        background: "var(--color-surface)",
-        borderTop: `2px solid ${borderColor}`,
-        borderRight: `2px solid ${borderColor}`,
-        borderBottom: `2px solid ${borderColor}`,
-        borderLeft: `3px solid var(--color-argument)`,
-        borderRadius: "var(--radius-md)",
-        padding: "10px 14px",
-        boxShadow: "var(--shadow-sm)",
-        maxWidth: 200,
-        fontSize: "var(--text-sm)",
-      }}
+      className={`bg-surface-canvas border rounded-md py-2.5 px-4 max-w-[200px] ${selected ? "border-accent-primary shadow-[0_0_12px_rgba(59,130,246,0.2)]" : "border-border-default"} shadow-[0_2px_8px_rgba(0,0,0,0.5)]`}
+      style={{ borderTopColor: selected ? "var(--color-accent-primary)" : "var(--color-facet-argument)", borderTopWidth: 2, borderTopStyle: "solid" }}
     >
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Left} />
-      <Handle type="target" position={Position.Right} />
-      <div style={{ fontWeight: 600, color: "var(--color-primary-dark)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {data.label}
-      </div>
-      <div style={{ fontSize: "var(--text-xs)", color: "var(--color-text-muted)", marginTop: 2 }}>
-        argument
+      <div className="font-mono text-[13px] font-semibold text-text-primary truncate">{data.label}</div>
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ backgroundColor: "var(--color-facet-argument)" }} />
+        <span className="text-[11px] text-text-muted font-sans">argument</span>
       </div>
     </div>
   );
