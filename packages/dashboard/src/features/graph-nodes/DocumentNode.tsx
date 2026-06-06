@@ -1,10 +1,11 @@
-import { Handle, Position, type Node } from "@xyflow/react";
+import { Handle, Position } from "@xyflow/react";
 
-type DocumentNodeData = { label: string; kind: string; documentId: string };
+type DocumentNodeData = { label: string; kind: string; documentId: string; dimmed: boolean; highlighted: boolean };
 
 export function DocumentNode({ data, selected }: { data: DocumentNodeData; selected: boolean }) {
+  const highlightRing = data.highlighted ? " ring-2 ring-[#A1A1AA]/60" : "";
   return (
-    <div className={`bg-surface-canvas border rounded-md py-2.5 px-4 max-w-[220px] ${selected ? "border-accent-primary shadow-[0_0_12px_rgba(59,130,246,0.2)]" : "border-border-default"} shadow-[0_2px_8px_rgba(0,0,0,0.5)]`}
+    <div className={`bg-surface-canvas border rounded-md py-2.5 px-4 max-w-[220px] ${selected ? "border-accent-primary shadow-[0_0_12px_rgba(59,130,246,0.2)]" : data.highlighted ? `border-[#A1A1AA]${highlightRing}` : "border-border-default"} shadow-[0_2px_8px_rgba(0,0,0,0.5)] ${data.dimmed ? "opacity-40" : ""}`}
       style={{ borderTopColor: selected ? "var(--color-accent-primary)" : "var(--color-facet-document)", borderTopWidth: 2, borderTopStyle: "solid" }}>
       <Handle type="source" position={Position.Right} />
       <Handle type="target" position={Position.Left} />
