@@ -101,7 +101,7 @@ describe("DetailPanelShell (with tabs)", () => {
       <DetailPanelShell
         document={doc}
         selectedNodeId="node-1"
-        selection={{ kind: "concept", label: "Event Loop", documentTitle: "Test Doc" }}
+        selection={{ kind: "concept", label: "Event Loop", documentTitle: "Test Doc", definition: "A programming construct", importance: "high" }}
       />,
     );
     expect(screen.getByText("Event Loop")).toBeInTheDocument();

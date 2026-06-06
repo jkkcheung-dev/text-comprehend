@@ -1,13 +1,45 @@
 import { useState, useEffect } from "react";
+import type { Evidence, SourceRef } from "@text-comprehend/core";
 import type { DashboardDocument } from "../data/types";
 import { renderMarkdown } from "./markdown-renderer";
 import { ComprehensionCheck } from "./comprehension-check";
 
-export type DetailSelection = {
-  kind: string;
-  label: string;
-  documentTitle: string;
-};
+export type DetailSelection =
+  | {
+      kind: "document";
+      label: string;
+      documentTitle: string;
+      filePath?: string;
+      fileType?: string;
+      lastAnalyzed?: string;
+    }
+  | {
+      kind: "concept";
+      label: string;
+      documentTitle: string;
+      definition: string;
+      importance: string;
+      sourceRefs?: SourceRef[];
+    }
+  | {
+      kind: "argument";
+      label: string;
+      documentTitle: string;
+      argumentType: string;
+      sourceRefs?: SourceRef[];
+      evidence?: Evidence[];
+      assumptions: string[];
+      gaps: string[];
+    }
+  | {
+      kind: "question";
+      label: string;
+      documentTitle: string;
+      answer: string;
+      difficulty: string;
+      facet?: string;
+      sourceRefs?: SourceRef[];
+    };
 
 type TabKey = "summary" | "glossary" | "arguments" | "questions";
 
