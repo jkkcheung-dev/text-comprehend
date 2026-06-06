@@ -52,7 +52,7 @@ function toXYFlowNodes(records: GraphNodeRecord[], selectedNodeId: string | null
     id: r.id,
     type: `${r.kind}Node` as keyof typeof nodeTypes,
     position: { x: 0, y: 0 },
-    data: { label: r.label, kind: r.kind, documentId: r.documentId },
+    data: { label: r.label, kind: r.kind, documentId: r.documentId, dimmed: r.dimmed, highlighted: r.highlighted },
     selected: r.id === selectedNodeId,
   }));
 }
